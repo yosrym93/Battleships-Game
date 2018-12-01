@@ -1,11 +1,19 @@
+include Main.inc
+
 .MODEL SMALL
-
 .STACK 64
-
 .DATA
+;---------------- Messages Data For The User -------------------
+Please_Enter_Your_NAME_MSG  db    16h,'Please Enter Your Name'
+Player1_MSG                 db    8h ,'Player1:' 
+Player2_MSG                 db    8h ,'Player2:'         
+Press_Enter_MSG             db    1Bh,'Press Enter Key To Continue' 
+To_Start_Game_MSG           db    1Bh,'-To Start The Game Press F2'
+Enter_Level_MSG             db    1Ch,'-Enter The Game Level 1 Or 2'
+To_End_Prog_MSG             db    1Eh,'-To End The Programe Press ESC'
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
-LEVEL               DB     1   ; 1 OR 2
-GRID_SIZE           EQU  100   ; 10 X 10
+LEVEL               DB     1,?,?,?   ; 1 OR 2
+GRID_SIZE           EQU  100         ; 10 X 10
 
 ;---- NUMBER OF SHIPS --------------------------------------------
 N_SHIPS          EQU 10   ; PLAYER 1 NUMBER OF SHIPS
@@ -27,7 +35,7 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
                     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
 
 ;---------------- PLAYER 1 DATA ----------------------------------
-P1_USERNAME         DB  20 DUP ('$')
+P1_UserName         db    14h,?,20 DUP('$') 
 P1_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
@@ -95,7 +103,7 @@ P1_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2
 
 
 ;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB  20 DUP ('$')
+P2_UserName         db    14h,?,20 DUP('$') 
 P2_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P2 ATTACKS ---------------------------------------------
@@ -166,14 +174,137 @@ MOV AX, @DATA
 MOV DS, AX
 
 
-MOV AX, 6AH
-INT 10H
-
+  InitializePrograme
+  UserNames
+  MainMenu
+  GetLevel
 
 
 
 
 HLT
 MAIN    ENDP
+;-------------------------------------;
+;---------- Procedures ---------------;
+;-------------------------------------;        
+Print_Message    PROC Near
 
+      MOV AX,1301H
+      MOV BX,BP
+      MOV CL,[BX]
+      MOV CH,00H
+      ADD BP,1H
+      MOV BX,000FH  
+      INT 10H
+      ret
+
+Print_Message     ENDP
+;-------------------------------------;
+Clear_Screen    PROC Near
+
+     MOV DX,0  
+     Mov AX,0C0FH       
+       L1:
+          MOV cx,0320H                
+       L2:   
+          int 10h
+          LOOP L2
+          INC DX
+          CMP DX,0258h
+          jnz L1   
+            
+     ret       
+
+Clear_Screen     ENDP
+;-------------------------------------;
+Get_User_Name     PROC Near
+
+     PrintMessage Please_Enter_Your_NAME_MSG , 1025h
+     PrintMessage Press_Enter_MSG , 1425h
+     
+     cmp SI,1h
+     jnz Player2
+     PrintMessage Player1_MSG ,0925h
+     jmp Cont
+Player2:
+     PrintMessage Player2_MSG ,0925h 
+     
+Cont:        
+     mov ah,02h
+     mov dx,1225h
+     int 10h
+        
+     mov ah,0AH
+     mov dx,DI
+     int 21h
+     ret 
+     
+Get_User_Name     ENDP
+;-------------------------------------;
+User_Names     PROC Near
+
+     GetUserName 1h,P1_UserName
+     ClearScreen  
+     GetUserName 2h,P2_UserName
+     ClearScreen
+     
+     ret 
+User_Names     ENDP
+;-------------------------------------;
+Main_Menu     PROC Near
+
+        PrintMessage To_Start_Game_MSG , 1025h
+        PrintMessage To_End_Prog_MSG , 1425h
+
+  NotValid:          
+        mov ah,0
+        int 16h
+        cmp Ah,3Ch
+        jz Cont2
+  NotF2:                 
+        cmp Ah,01h
+        jz EXIT
+        jnz NotValid            ;Jz where ???
+  Cont2:       
+        ClearScreen
+     ret 
+  EXIT:
+        hlt
+     
+Main_Menu     ENDP
+;-------------------------------------;
+Initalize_Programe     PROC Near
+
+   
+        MOV AX,4f02h           ;Go To VideoMode 800*600
+        MOV BX,103h
+        int 10h
+
+        ClearScreen
+     ret 
+Initalize_Programe     ENDP
+;-------------------------------------;
+Get_Level     PROC Near
+
+ PrintMessage Enter_Level_MSG , 1025h
+  
+  NotValid2:
+        mov ah,02h                 ;Move The Curser
+        mov dx,1225h
+        int 10h
+        
+        mov ah,0AH                 ;Get User Input   
+        mov dx,offset Level
+        int 21h     
+        
+        Mov Bx,dx                  ;Check That The user input 1 Or 2 
+        mov Cl,[bx+2]
+        cmp Cl,31h
+        jz  Back
+        cmp Cl,32h
+        jnz NotValid2
+  Back:
+        ret
+Get_Level     ENDP
+;-------------------------------------;
 END     MAIN
