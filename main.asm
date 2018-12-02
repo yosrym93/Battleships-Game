@@ -1,16 +1,17 @@
 include Main.inc
 
 .MODEL SMALL
+.386
 .STACK 64
 .DATA
 ;---------------- Messages Data For The User -------------------
-Please_Enter_Your_NAME_MSG  db    16h,'Please Enter Your Name'
-Player1_MSG                 db    8h ,'Player1:' 
-Player2_MSG                 db    8h ,'Player2:'         
+Please_Enter_Your_NAME_MSG  db    17h,'Please Enter Your Name:'
+Player1_MSG                 db    7h ,'Player1' 
+Player2_MSG                 db    7h ,'Player2'         
 Press_Enter_MSG             db    1Bh,'Press Enter Key To Continue' 
-To_Start_Game_MSG           db    1Bh,'-To Start The Game Press F2'
-Enter_Level_MSG             db    1Ch,'-Enter The Game Level 1 Or 2'
-To_End_Prog_MSG             db    1Eh,'-To End The Programe Press ESC'
+To_Start_Game_MSG           db    1Ch,'- To Start The Game Press F2'
+Enter_Level_MSG             db    1Eh,'- Choose The Game Level 1 Or 2'
+To_End_Prog_MSG             db    1Fh,'- To End The Programe Press ESC'
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
 LEVEL               DB     1,?,?,?   ; 1 OR 2
 GRID_SIZE           EQU  100         ; 10 X 10
@@ -172,7 +173,7 @@ P2_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2
 MAIN PROC FAR
 MOV AX, @DATA
 MOV DS, AX
-
+MOV ES, AX
 
   InitializePrograme
   UserNames
@@ -180,10 +181,9 @@ MOV DS, AX
   GetLevel
 
 
-
-
 HLT
 MAIN    ENDP
+
 ;-------------------------------------;
 ;---------- Procedures ---------------;
 ;-------------------------------------;        
@@ -194,7 +194,7 @@ Print_Message    PROC Near
       MOV CL,[BX]
       MOV CH,00H
       ADD BP,1H
-      MOV BX,000FH  
+      Mov Bx,SI
       INT 10H
       ret
 
@@ -203,7 +203,7 @@ Print_Message     ENDP
 Clear_Screen    PROC Near
 
      MOV DX,0  
-     Mov AX,0C0FH       
+     Mov Ah,0CH       
        L1:
           MOV cx,0320H                
        L2:   
@@ -219,22 +219,22 @@ Clear_Screen     ENDP
 ;-------------------------------------;
 Get_User_Name     PROC Near
 
-     PrintMessage Please_Enter_Your_NAME_MSG , 1025h
-     PrintMessage Press_Enter_MSG , 1425h
+     PrintMessage Please_Enter_Your_NAME_MSG , 1025h , 0FF0Fh
+     PrintMessage Press_Enter_MSG , 1423h , 0FF0Fh
      
      cmp SI,1h
      jnz Player2
-     PrintMessage Player1_MSG ,0925h
+     PrintMessage Player1_MSG ,0C2Ch , 0FF28h
      jmp Cont
 Player2:
-     PrintMessage Player2_MSG ,0925h 
+     PrintMessage Player2_MSG ,0C2Ch , 0FF28h
      
 Cont:        
-     mov ah,02h
-     mov dx,1225h
+     mov ah,02h             ;Move The Cursor
+     mov dx,122Ah
      int 10h
         
-     mov ah,0AH
+     mov ah,0AH            ;Get The User Input and store it in UserName1 or UserName2(Sent Parameter)
      mov dx,DI
      int 21h
      ret 
@@ -244,17 +244,17 @@ Get_User_Name     ENDP
 User_Names     PROC Near
 
      GetUserName 1h,P1_UserName
-     ClearScreen  
+     ClearScreen 0FFh 
      GetUserName 2h,P2_UserName
-     ClearScreen
+     ClearScreen 0FFh
      
      ret 
 User_Names     ENDP
 ;-------------------------------------;
 Main_Menu     PROC Near
 
-        PrintMessage To_Start_Game_MSG , 1025h
-        PrintMessage To_End_Prog_MSG , 1425h
+        PrintMessage To_Start_Game_MSG , 1025h , 0FF0Fh
+        PrintMessage To_End_Prog_MSG , 1425h , 0FF0Fh
 
   NotValid:          
         mov ah,0
@@ -266,7 +266,7 @@ Main_Menu     PROC Near
         jz EXIT
         jnz NotValid            ;Jz where ???
   Cont2:       
-        ClearScreen
+  ClearScreen 0FFh
      ret 
   EXIT:
         hlt
@@ -275,25 +275,39 @@ Main_Menu     ENDP
 ;-------------------------------------;
 Initalize_Programe     PROC Near
 
-   
         MOV AX,4f02h           ;Go To VideoMode 800*600
         MOV BX,103h
         int 10h
 
-        ClearScreen
      ret 
 Initalize_Programe     ENDP
 ;-------------------------------------;
 Get_Level     PROC Near
 
- PrintMessage Enter_Level_MSG , 1025h
+ PrintMessage Enter_Level_MSG , 1025h , 0FF0Fh
   
   NotValid2:
+       ; pushA
+       ; MOV DX,120h  
+       ; Mov Ah,0CH 
+       ; Mov AL,05h      
+       ; L4:
+        ; MOV cx,190H                
+        ; L5:   
+        ; int 10h
+        ; inc Cx
+        ; CMP CX,0195h
+        ; jnz L5
+        ; INC DX
+        ; CMP DX,125h
+        ; jnz L4       
+        ; popA  
+        
         mov ah,02h                 ;Move The Curser
-        mov dx,1225h
+        mov dx,1232h
         int 10h
         
-        mov ah,0AH                 ;Get User Input   
+        mov ah,0AH                 ;Get User Input and store it in Level  
         mov dx,offset Level
         int 21h     
         
@@ -307,4 +321,5 @@ Get_Level     PROC Near
         ret
 Get_Level     ENDP
 ;-------------------------------------;
-END     MAIN
+END MAIN 
+    
