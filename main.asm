@@ -1,28 +1,40 @@
-INCLUDE MAIN.INC
-INCLUDE DRAWGRID.INC
-.MODEL SMALL
+INCLUDE YOSRY.INC
+INCLUDE AHMAD.INC
+.MODEL LARGE
 .386
+
 .STACK 64
 .DATA
-;---------------- COLORS ------------------------------------
-BLACK                   DB  00H
-WHITE                   DB  0FH
+
+;---------------- COLORS ----------------------------------------
+BLACK               DB  00H
+WHITE               DB  0FH
+BLUE                DB  01H
+LIGHT_BLUE          DB  09H
+
+;---------------- DRAW RECTANGLE PARAMETERS ----------------------
+X1                  DW  ?
+X2                  DW  ?
+Y1                  DW  ?
+Y2                  DW  ?
+
 ;---------------- SLIDER DATA ------------------------------------
-SLIDER_COLUMN              EQU 480
-SLIDER_INITIAL_ROW         EQU 473
-SLIDER_CURRENT_ROW         DW  SLIDER_INITIAL_ROW
-SPACE_SCANCODE             EQU 39H
-SLIDER_DIRECTION           DB  0          ; 0 UP, 1 DOWN
-SLIDER_MAX_UP              EQU  5
-SLIDER_MAX_DOWN            EQU 473
+SLIDER_COLUMN       EQU 480
+SLIDER_INITIAL_ROW  EQU 473
+SLIDER_CURRENT_ROW  DW  SLIDER_INITIAL_ROW
+SPACE_SCANCODE      EQU 39H
+SLIDER_DIRECTION    DB  0   ; 0 UP, 1 DOWN
+SLIDER_MAX_UP       EQU  5
+SLIDER_MAX_DOWN     EQU 473
+
 ;---------------- MESSAGES DATA FOR THE USER -------------------
-PLEASE_ENTER_YOUR_NAME_MSG  DB    17H,'PLEASE ENTER YOUR NAME:'
+PLEASE_ENTER_YOUR_NAME_MSG  DB    19H,'- PLEASE ENTER YOUR NAME:'
 PLAYER1_MSG                 DB    7H ,'PLAYER1' 
 PLAYER2_MSG                 DB    7H ,'PLAYER2'         
 PRESS_ENTER_MSG             DB    1BH,'PRESS ENTER KEY TO CONTINUE' 
 TO_START_GAME_MSG           DB    1CH,'- TO START THE GAME PRESS F2'
 ENTER_LEVEL_MSG             DB    1EH,'- CHOOSE THE GAME LEVEL 1 OR 2'
-TO_END_PROG_MSG             DB    1FH,'- TO END THE PROGRAME PRESS ESC'
+TO_END_PROG_MSG             DB    1DH,'TO END THE PROGRAME PRESS ESC'
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
 LEVEL               DB     2,?,?,?   ; 1 OR 2
 GRID_SIZE           EQU  100         ; 10 X 10
@@ -48,7 +60,7 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
 
 ;---------------- PLAYER 1 DATA ----------------------------------
 P1_USERNAME         DB    14H,?,20 DUP('$') 
-P1_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+P1_SCORE            DB    37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
 ;GRID CELLS THAT P1 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
@@ -115,7 +127,7 @@ P1_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2
 
 
 ;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB    14H,?,20 DUP('$') 
+P2_USERNAME         DB  14H,?,20 DUP('$') 
 P2_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P2 ATTACKS ---------------------------------------------
@@ -186,21 +198,42 @@ MOV AX, @DATA
 MOV DS, AX
 MOV ES, AX
 
-  INITIALIZE_PROGRAME
-  USER_NAMES
-  MAIN_MENU
-  GET_LEVEL
-  DRAW_GRID
-  DRAW_SLIDER_BAR
-  FIRE_SLIDER
+INITIALIZE_PROGRAM
+USER_NAMES
+MAIN_MENU
+GET_LEVEL
+CLEAR_GAME_SCREEN   WHITE
+DRAW_GRID
+DRAW_SLIDER_BAR
+FIRE_SLIDER
 
 
 HLT
+RET
 MAIN    ENDP
-
 ;-------------------------------------;
 ;---------- PROCEDURES ---------------;
-;-------------------------------------;        
+;-------------------------------------;
+DRAW_RECTANGLE_   PROC  NEAR    
+    ;PARAMETERS
+    ; X1, Y1, X2, Y2, AL = COLOR
+    INC X2
+    INC Y2  ;TO STOP AT X2 + 1, Y2 + 1
+    MOV DX, Y1
+    MOV AH, 0CH   ;AH = 0C FOR INT, AL = COLOR
+    DRAW_ALL_RECTANGLE_ROWS:
+    MOV CX, X1
+        DRAW_RECTANGE_ROW:
+            INT 10H
+            INC CX
+            CMP CX, X2
+        JNZ DRAW_RECTANGE_ROW
+    INC DX
+    CMP DX, Y2
+    JNZ DRAW_ALL_RECTANGLE_ROWS
+    RET
+DRAW_RECTANGLE_ ENDP   
+;-------------------------------------;    
 PRINT_MESSAGE_    PROC NEAR
 
       MOV AX,1301H
@@ -215,25 +248,11 @@ PRINT_MESSAGE_    PROC NEAR
 PRINT_MESSAGE_    ENDP
 ;-------------------------------------;
 CLEAR_SCREEN_    PROC NEAR        ;CLEAR AN SPECIFIC PART IN THE GAME
- 
-     MOV AH,0CH       
-     CLEAR_ALL_ROWS:
-          MOV CX,BP                
-          CLEAR_ROW:   
-              INT 10H
-              INC CX
-              CMP CX,DI
-              JNZ CLEAR_ROW
-          INC DX
-          CMP DX,SI
-          JNZ CLEAR_ALL_ROWS     
-            
+     DRAW_RECTANGLE 0H,800,0H,480,BLACK     
      RET       
-
 CLEAR_SCREEN_     ENDP
 ;-------------------------------------;
 GET_USER_NAME_     PROC NEAR
-
      PRINT_MESSAGE PLEASE_ENTER_YOUR_NAME_MSG , 1025H , 0FF0FH
      PRINT_MESSAGE PRESS_ENTER_MSG , 1423H , 0FF0FH
      
@@ -259,9 +278,9 @@ CONT:
 USER_NAMES_     PROC NEAR
 
      GET_USER_NAME 1H,P1_USERNAME
-     CLEAR_SCREEN 0H,800,0H,480,BLACK 
+     CLEAR_GAME_SCREEN  BLACK 
      GET_USER_NAME 2H,P2_USERNAME
-     CLEAR_SCREEN 0H,800,0H,480,BLACK 
+     CLEAR_GAME_SCREEN  BLACK
      
      RET 
 USER_NAMES_     ENDP
@@ -281,21 +300,21 @@ MAIN_MENU_     PROC NEAR
         JZ EXIT
         JNZ NOTVALID            ;JZ WHERE ???
   CONT2:       
-  CLEAR_SCREEN 0H,800,0H,480,BLACK
+  CLEAR_SCREEN 
      RET 
   EXIT:
         HLT
      
 MAIN_MENU_     ENDP
 ;-------------------------------------;
-INITIALIZE_PROGRAME_     PROC NEAR
+INITIALIZE_PROGRAM_     PROC NEAR
 
         MOV AX,4F02H           ;GO TO VIDEOMODE 800*600
         MOV BX,103H
         INT 10H
 
      RET 
-     INITIALIZE_PROGRAME_     ENDP
+INITIALIZE_PROGRAM_     ENDP
 ;-------------------------------------;
 GET_LEVEL_     PROC NEAR
 
@@ -318,15 +337,15 @@ GET_LEVEL_     PROC NEAR
         CMP CL,32H
         JNZ NOTVALID2
   BACK:
-        CLEAR_SCREEN 0h,800,0h,480,WHITE
+        CLEAR_SCREEN 0H,800,0H,480,WHITE
         RET
-        GET_LEVEL_     ENDP
+GET_LEVEL_     ENDP
 ;-------------------------------------;
-DRAW_GRID_  PROC    NEAR
+DRAW_GRID_  PROC    NEAR    
     ; DRAW GRID COLUMNS
     MOV CX, 20
     MOV DX, 19      ;INITIAL POINT: (20,19)
-    MOV AX, 0C00H   ;AH = 0C FOR INT, AL = 00 (BLACK)
+    MOV AX, 0C00H   ;AH = 0C FOR INT, AL = O0 (BLACK)
     DRAW_ALL_COLUMNS:
         MOV DX, 19  ;START DRAWING EVERY COLUMN FROM THE INITIAL ROW
         DRAW_COLUMN:
@@ -354,15 +373,16 @@ DRAW_GRID_  PROC    NEAR
     RET
 DRAW_GRID_  ENDP
 ;-----------------------------------------;
-DRAW_SLIDER_     PROC   NEAR
+
+DRAW_SLIDER_     PROC   NEAR   
     ; PARAMETERS
-    MOV DI, AX  ; DI = AX = SLIDER_ROW
+    ; DI = SLIDER_ROW
+    ; AL = COLOR
     ;DRAW SLIDER
     MOV CX, SLIDER_COLUMN
     MOV DX, DI
     DEC DX
-    MOV AL,BL 
-    MOV AH, 0CH
+    MOV AH, 0CH ; AL = COLOR
     MOV BX, 1
     DRAW_ALL_SLIDER_COLUMNS:
         MOV DI, BX
@@ -381,7 +401,8 @@ DRAW_SLIDER_     PROC   NEAR
     RET
 DRAW_SLIDER_    ENDP 
 ;-----------------------------------------;
-DRAW_SLIDER_BAR_    PROC    NEAR
+
+DRAW_SLIDER_BAR_    PROC    NEAR   
     MOV CX, 470
     MOV DX, SLIDER_MAX_UP      ;INITIAL POINT
     MOV AX, 0C00H   ;AH = 0C FOR INT, AL = O0 (BLACK)
@@ -395,11 +416,12 @@ DRAW_SLIDER_BAR_    PROC    NEAR
         ADD CX, 1  ;DISTANCE BETWEEN COLUMNS
         CMP CX, 476 ;LAST LINE AT CX = 460 SO STOP WHEN CX + 44 = 504
     JNZ DRAW_ALL_BARS
-    DRAW_SLIDER SLIDER_INITIAL_ROW,BLACK
+    DRAW_SLIDER SLIDER_INITIAL_ROW, LIGHT_BLUE
     RET
 DRAW_SLIDER_BAR_    ENDP
 ;-----------------------------------------;
-FIRE_SLIDER_    PROC    NEAR
+
+FIRE_SLIDER_    PROC    NEAR   
     CHECK_USER_CLICK:
     ; CHECK IF USER PRESSED A KEY
     MOV AH, 1
@@ -433,10 +455,10 @@ FIRE_SLIDER_    PROC    NEAR
     MOV SLIDER_DIRECTION, 1
     ; DRAW THE SLIDER NEW POSITION
     DRAW_NEW_SLIDER:
-    DRAW_SLIDER SLIDER_CURRENT_ROW,BLACK
+    DRAW_SLIDER SLIDER_CURRENT_ROW, LIGHT_BLUE
     ; DELAY 
     MOV AH,86H
-    MOV CX,0 ;CX:DX = Interval in microseconds
+    MOV CX,0 ;CX:DX = INTERVAL IN MICROSECONDS
     MOV DX,03E8H
     INT 15H
     JMP CHECK_USER_CLICK
@@ -444,6 +466,11 @@ FIRE_SLIDER_    PROC    NEAR
     RET
 FIRE_SLIDER_    ENDP
 ;-----------------------------------------;
+CLEAR_GAME_SCREEN_  PROC    NEAR
+    ; PARAMETERS
+    ; AL = COLOR   
+    DRAW_RECTANGLE  0, 0, 799, 479, AL  
+    RET
+CLEAR_GAME_SCREEN_  ENDP
 
-END MAIN 
-    
+END     MAIN
