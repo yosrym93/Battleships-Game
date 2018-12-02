@@ -43,7 +43,7 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
                     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
 
 ;---------------- PLAYER 1 DATA ----------------------------------
-P1_USERNAME         DB  20 DUP ('$')
+P1_USERNAME         DB  20, ?, 20DUP ('?')
 P1_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
@@ -111,7 +111,7 @@ P1_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2
 
 
 ;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB  20 DUP ('$')
+P2_USERNAME         DB  20, ?, 20DUP ('?')
 P2_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P2 ATTACKS ---------------------------------------------
@@ -176,6 +176,11 @@ P2_SHIP10 LABEL BYTE
 P2_SHIP10_N_CELLS                  DB  SHIP10_N_CELLS             ; TOTAL NUMBER OF CELLS
 P2_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2, Y2, X3, Y3, ...)
 
+;--NADER-----------------------------------------------------------
+SCORE_CONSTANT_TEXT                     DB  "'s Score: "
+
+
+
 .CODE
 MAIN PROC FAR
 MOV AX, @DATA
@@ -189,6 +194,8 @@ FIRE_SLIDER
 HLT
 MAIN    ENDP
 
+MOV DX, 0
+MOV AX, 0C0FH
 
 ;-----------------------------------------;
 
