@@ -1,11 +1,31 @@
+INCLUDE MAIN.INC
+INCLUDE DRAWGRID.INC
 .MODEL SMALL
-
+.386
 .STACK 64
-
 .DATA
+;---------------- COLORS ------------------------------------
+BLACK                   DB  00H
+WHITE                   DB  0FH
+;---------------- SLIDER DATA ------------------------------------
+SLIDER_COLUMN              EQU 480
+SLIDER_INITIAL_ROW         EQU 473
+SLIDER_CURRENT_ROW         DW  SLIDER_INITIAL_ROW
+SPACE_SCANCODE             EQU 39H
+SLIDER_DIRECTION           DB  0          ; 0 UP, 1 DOWN
+SLIDER_MAX_UP              EQU  5
+SLIDER_MAX_DOWN            EQU 473
+;---------------- MESSAGES DATA FOR THE USER -------------------
+PLEASE_ENTER_YOUR_NAME_MSG  DB    17H,'PLEASE ENTER YOUR NAME:'
+PLAYER1_MSG                 DB    7H ,'PLAYER1' 
+PLAYER2_MSG                 DB    7H ,'PLAYER2'         
+PRESS_ENTER_MSG             DB    1BH,'PRESS ENTER KEY TO CONTINUE' 
+TO_START_GAME_MSG           DB    1CH,'- TO START THE GAME PRESS F2'
+ENTER_LEVEL_MSG             DB    1EH,'- CHOOSE THE GAME LEVEL 1 OR 2'
+TO_END_PROG_MSG             DB    1FH,'- TO END THE PROGRAME PRESS ESC'
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
-LEVEL               DB     1   ; 1 OR 2
-GRID_SIZE           EQU  100   ; 10 X 10
+LEVEL               DB     2,?,?,?   ; 1 OR 2
+GRID_SIZE           EQU  100         ; 10 X 10
 
 ;---- NUMBER OF SHIPS --------------------------------------------
 N_SHIPS          EQU 10   ; PLAYER 1 NUMBER OF SHIPS
@@ -27,7 +47,7 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
                     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
 
 ;---------------- PLAYER 1 DATA ----------------------------------
-P1_USERNAME         DB  20 DUP ('$')
+P1_USERNAME         DB    14H,?,20 DUP('$') 
 P1_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
@@ -95,7 +115,7 @@ P1_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2
 
 
 ;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB  20 DUP ('$')
+P2_USERNAME         DB    14H,?,20 DUP('$') 
 P2_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P2 ATTACKS ---------------------------------------------
@@ -164,16 +184,266 @@ P2_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2
 MAIN PROC FAR
 MOV AX, @DATA
 MOV DS, AX
+MOV ES, AX
 
-
-MOV AX, 6AH
-INT 10H
-
-
-
+  INITIALIZE_PROGRAME
+  USER_NAMES
+  MAIN_MENU
+  GET_LEVEL
+  DRAW_GRID
+  DRAW_SLIDER_BAR
+  FIRE_SLIDER
 
 
 HLT
 MAIN    ENDP
 
-END     MAIN
+;-------------------------------------;
+;---------- PROCEDURES ---------------;
+;-------------------------------------;        
+PRINT_MESSAGE_    PROC NEAR
+
+      MOV AX,1301H
+      MOV BX,BP
+      MOV CL,[BX]
+      MOV CH,00H
+      ADD BP,1H
+      MOV BX,SI
+      INT 10H
+      RET
+
+PRINT_MESSAGE_    ENDP
+;-------------------------------------;
+CLEAR_SCREEN_    PROC NEAR        ;CLEAR AN SPECIFIC PART IN THE GAME
+ 
+     MOV AH,0CH       
+     CLEAR_ALL_ROWS:
+          MOV CX,BP                
+          CLEAR_ROW:   
+              INT 10H
+              INC CX
+              CMP CX,DI
+              JNZ CLEAR_ROW
+          INC DX
+          CMP DX,SI
+          JNZ CLEAR_ALL_ROWS     
+            
+     RET       
+
+CLEAR_SCREEN_     ENDP
+;-------------------------------------;
+GET_USER_NAME_     PROC NEAR
+
+     PRINT_MESSAGE PLEASE_ENTER_YOUR_NAME_MSG , 1025H , 0FF0FH
+     PRINT_MESSAGE PRESS_ENTER_MSG , 1423H , 0FF0FH
+     
+     CMP SI,1H
+     JNZ PLAYER2
+     PRINT_MESSAGE PLAYER1_MSG ,0C2CH , 0FF28H
+     JMP CONT
+PLAYER2:
+     PRINT_MESSAGE PLAYER2_MSG ,0C2CH , 0FF28H
+     
+CONT:        
+     MOV AH,02H             ;MOVE THE CURSOR
+     MOV DX,122AH
+     INT 10H
+        
+     MOV AH,0AH            ;GET THE USER INPUT AND STORE IT IN USERNAME1 OR USERNAME2(SENT PARAMETER)
+     MOV DX,DI
+     INT 21H
+     RET 
+     
+ GET_USER_NAME_     ENDP
+;-------------------------------------;
+USER_NAMES_     PROC NEAR
+
+     GET_USER_NAME 1H,P1_USERNAME
+     CLEAR_SCREEN 0H,800,0H,480,BLACK 
+     GET_USER_NAME 2H,P2_USERNAME
+     CLEAR_SCREEN 0H,800,0H,480,BLACK 
+     
+     RET 
+USER_NAMES_     ENDP
+;-------------------------------------;
+MAIN_MENU_     PROC NEAR
+
+        PRINT_MESSAGE TO_START_GAME_MSG , 1025H , 0FF0FH
+        PRINT_MESSAGE TO_END_PROG_MSG , 1425H , 0FF0FH
+
+  NOTVALID:          
+        MOV AH,0
+        INT 16H
+        CMP AH,3CH
+        JZ CONT2
+  NOTF2:                 
+        CMP AH,01H
+        JZ EXIT
+        JNZ NOTVALID            ;JZ WHERE ???
+  CONT2:       
+  CLEAR_SCREEN 0H,800,0H,480,BLACK
+     RET 
+  EXIT:
+        HLT
+     
+MAIN_MENU_     ENDP
+;-------------------------------------;
+INITIALIZE_PROGRAME_     PROC NEAR
+
+        MOV AX,4F02H           ;GO TO VIDEOMODE 800*600
+        MOV BX,103H
+        INT 10H
+
+     RET 
+     INITIALIZE_PROGRAME_     ENDP
+;-------------------------------------;
+GET_LEVEL_     PROC NEAR
+
+ PRINT_MESSAGE ENTER_LEVEL_MSG , 1025H , 0FF0FH
+  
+  NOTVALID2:
+
+        MOV AH,02H                 ;MOVE THE CURSER
+        MOV DX,1232H
+        INT 10H
+        
+        MOV AH,0AH                 ;GET USER INPUT AND STORE IT IN LEVEL  
+        MOV DX,OFFSET LEVEL
+        INT 21H     
+        
+        MOV BX,DX                  ;CHECK THAT THE USER INPUT 1 OR 2 
+        MOV CL,[BX+2]
+        CMP CL,31H
+        JZ  BACK
+        CMP CL,32H
+        JNZ NOTVALID2
+  BACK:
+        CLEAR_SCREEN 0h,800,0h,480,WHITE
+        RET
+        GET_LEVEL_     ENDP
+;-------------------------------------;
+DRAW_GRID_  PROC    NEAR
+    ; DRAW GRID COLUMNS
+    MOV CX, 20
+    MOV DX, 19      ;INITIAL POINT: (20,19)
+    MOV AX, 0C00H   ;AH = 0C FOR INT, AL = 00 (BLACK)
+    DRAW_ALL_COLUMNS:
+        MOV DX, 19  ;START DRAWING EVERY COLUMN FROM THE INITIAL ROW
+        DRAW_COLUMN:
+            INT 10H
+            INC DX
+            CMP DX, 460
+        JNZ DRAW_COLUMN
+        ADD CX, 44  ;DISTANCE BETWEEN COLUMNS
+        CMP CX, 504 ;LAST LINE AT CX = 460 SO STOP WHEN CX + 44 = 504
+    JNZ DRAW_ALL_COLUMNS
+    ; DRAW GRID ROWS
+    MOV CX, 20
+    MOV DX, 19      ;INITIAL POINT: (20,19)
+    MOV AX, 0C00H   ;AH = 0C FOR INT, AL = O0 (BLACK)
+    DRAW_ALL_ROWS:
+        MOV CX, 20  ;START DRAWING EVERY ROW FROM THE INITIAL COLUMN
+        DRAW_ROW:
+            INT 10H
+            INC CX
+            CMP CX, 461
+        JNZ DRAW_ROW
+        ADD DX, 44  ;DISTANCE BETWEEN ROWS
+        CMP DX, 503 ;LAST LINE AT DX = 459 SO STOP WHEN DX + 44 = 503
+    JNZ DRAW_ALL_ROWS
+    RET
+DRAW_GRID_  ENDP
+;-----------------------------------------;
+DRAW_SLIDER_     PROC   NEAR
+    ; PARAMETERS
+    MOV DI, AX  ; DI = AX = SLIDER_ROW
+    ;DRAW SLIDER
+    MOV CX, SLIDER_COLUMN
+    MOV DX, DI
+    DEC DX
+    MOV AL,BL 
+    MOV AH, 0CH
+    MOV BX, 1
+    DRAW_ALL_SLIDER_COLUMNS:
+        MOV DI, BX
+        DRAW_SLIDER_COLUMN:
+            INT 10H
+            INC DX
+            DEC DI
+        JNZ DRAW_SLIDER_COLUMN
+        MOV DI, BX
+        INC DI
+        SUB DX, DI
+        INC CX
+        ADD BX, 2
+        CMP BX, 15  ; TO INCREASE SLIDER SIZE ADD 2 (MUST BE ALWAYS ODD)
+    JNZ DRAW_ALL_SLIDER_COLUMNS
+    RET
+DRAW_SLIDER_    ENDP 
+;-----------------------------------------;
+DRAW_SLIDER_BAR_    PROC    NEAR
+    MOV CX, 470
+    MOV DX, SLIDER_MAX_UP      ;INITIAL POINT
+    MOV AX, 0C00H   ;AH = 0C FOR INT, AL = O0 (BLACK)
+    DRAW_ALL_BARS:
+        MOV DX, SLIDER_MAX_UP  ;START DRAWING EVERY COLUMN FROM THE INITIAL ROW
+        DRAW_BAR:
+            INT 10H
+            INC DX
+            CMP DX, SLIDER_MAX_DOWN
+        JNZ DRAW_BAR
+        ADD CX, 1  ;DISTANCE BETWEEN COLUMNS
+        CMP CX, 476 ;LAST LINE AT CX = 460 SO STOP WHEN CX + 44 = 504
+    JNZ DRAW_ALL_BARS
+    DRAW_SLIDER SLIDER_INITIAL_ROW,BLACK
+    RET
+DRAW_SLIDER_BAR_    ENDP
+;-----------------------------------------;
+FIRE_SLIDER_    PROC    NEAR
+    CHECK_USER_CLICK:
+    ; CHECK IF USER PRESSED A KEY
+    MOV AH, 1
+    INT 16H
+    JZ MOVE_SLIDER
+    ; GET KEY PRESSED
+    MOV AH, 0
+    INT 16H
+    CMP AH, SPACE_SCANCODE
+    JZ STOP_SLIDER
+    ; MOVE THE SLIDER
+    MOVE_SLIDER:
+    ; CLEAR THE SLIDER CURRENT POSITION
+    DRAW_SLIDER SLIDER_CURRENT_ROW, WHITE
+    ; CHECK WHETHER TO MOVE IT UP OR DOWN
+    CMP SLIDER_DIRECTION, 0
+    JZ  DECREMENT_ROW
+    ; MOVE SLIDER DOWN
+    INC SLIDER_CURRENT_ROW
+    ; CHECK IF ROW IS AT ITS LOWEST, CHANGE THE DIRECTION TO UP (0)
+    CMP SLIDER_CURRENT_ROW, SLIDER_MAX_DOWN
+    JNZ DRAW_NEW_SLIDER
+    MOV SLIDER_DIRECTION, 0
+    JMP DRAW_NEW_SLIDER
+    ; MOVE SLIDER UP
+    DECREMENT_ROW:
+    DEC SLIDER_CURRENT_ROW
+    ; CHECK IF ROW IS AT ITS HIGHEST, CHANGE THE DIRECTION TO DOWN (1)
+    CMP SLIDER_CURRENT_ROW, SLIDER_MAX_UP
+    JNZ DRAW_NEW_SLIDER
+    MOV SLIDER_DIRECTION, 1
+    ; DRAW THE SLIDER NEW POSITION
+    DRAW_NEW_SLIDER:
+    DRAW_SLIDER SLIDER_CURRENT_ROW,BLACK
+    ; DELAY 
+    MOV AH,86H
+    MOV CX,0 ;CX:DX = Interval in microseconds
+    MOV DX,03E8H
+    INT 15H
+    JMP CHECK_USER_CLICK
+    STOP_SLIDER:
+    RET
+FIRE_SLIDER_    ENDP
+;-----------------------------------------;
+
+END MAIN 
+    
