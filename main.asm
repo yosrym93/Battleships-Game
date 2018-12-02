@@ -1,4 +1,4 @@
-INCLUDE drawgrid.inc
+INCLUDE yosry.inc
 .MODEL LARGE
 .386
 
@@ -6,9 +6,15 @@ INCLUDE drawgrid.inc
 
 .DATA
 
-;---------------- COLORS ------------------------------------
+;---------------- COLORS ----------------------------------------
 BLACK               DB  00H
 WHITE               DB  0FH
+
+;---------------- DRAW RECTANGLE PARAMETERS ----------------------
+X1                  DW  ?
+X2                  DW  ?
+Y1                  DW  ?
+Y2                  DW  ?
 
 ;---------------- SLIDER DATA ------------------------------------
 SLIDER_COLUMN       EQU 480
@@ -181,18 +187,45 @@ MAIN PROC FAR
 MOV AX, @DATA
 MOV DS, AX
 
+; GO TO GRAPHICS MODE (800 x 600)
+MOV AX, 4F02H
+MOV BX, 103H
+INT 10H
+
+    
 CLEAR_GAME_SCREEN
 DRAW_GRID
 DRAW_SLIDER_BAR
 FIRE_SLIDER
 
 HLT
+RET
 MAIN    ENDP
-
 
 ;-----------------------------------------;
 
-DRAW_GRID_  PROC    NEAR
+DRAW_RECTANGLE_   PROC  NEAR    
+    ;PARAMETERS
+    ; X1, Y1, X2, Y2, AL = COLOR
+    INC X2
+    INC Y2  ;TO STOP AT X2 + 1, Y2 + 1
+    MOV DX, Y1
+    MOV AH, 0CH   ;AH = 0C FOR INT, AL = COLOR
+    DRAW_ALL_RECTANGLE_ROWS:
+    MOV CX, X1
+        DRAW_RECTANGE_ROW:
+            INT 10H
+            INC CX
+            CMP CX, X2
+        JNZ DRAW_RECTANGE_ROW
+    INC DX
+    CMP DX, Y2
+    JNZ DRAW_ALL_RECTANGLE_ROWS
+    RET
+DRAW_RECTANGLE_ ENDP
+;-----------------------------------------;
+
+DRAW_GRID_  PROC    NEAR    
     ; DRAW GRID COLUMNS
     MOV CX, 20
     MOV DX, 19      ;INITIAL POINT: (20,19)
@@ -226,16 +259,15 @@ DRAW_GRID_  PROC    NEAR
 DRAW_GRID_  ENDP
 ;-----------------------------------------;
 
-DRAW_SLIDER_     PROC   NEAR
+DRAW_SLIDER_     PROC   NEAR   
     ; PARAMETERS
-    MOV DI, AX  ; DI = AX = SLIDER_ROW
-    MOV SI, BX  ; SI = BX = COLOR
+    ; DI = SLIDER_ROW
+    ; AL = COLOR
     ;DRAW SLIDER
     MOV CX, SLIDER_COLUMN
     MOV DX, DI
     DEC DX
-    MOV AX, SI
-    MOV AH, 0CH
+    MOV AH, 0CH ; AL = COLOR
     MOV BX, 1
     DRAW_ALL_SLIDER_COLUMNS:
         MOV DI, BX
@@ -255,7 +287,7 @@ DRAW_SLIDER_     PROC   NEAR
 DRAW_SLIDER_    ENDP 
 ;-----------------------------------------;
 
-DRAW_SLIDER_BAR_    PROC    NEAR
+DRAW_SLIDER_BAR_    PROC    NEAR   
     MOV CX, 470
     MOV DX, SLIDER_MAX_UP      ;INITIAL POINT
     MOV AX, 0C00H   ;AH = 0C FOR INT, AL = O0 (BLACK)
@@ -269,12 +301,12 @@ DRAW_SLIDER_BAR_    PROC    NEAR
         ADD CX, 1  ;DISTANCE BETWEEN COLUMNS
         CMP CX, 476 ;LAST LINE AT CX = 460 SO STOP WHEN CX + 44 = 504
     JNZ DRAW_ALL_BARS
-    DRAW_SLIDER SLIDER_INITIAL_ROW, SLIDER_BLACK
+    DRAW_SLIDER SLIDER_INITIAL_ROW, BLACK
     RET
 DRAW_SLIDER_BAR_    ENDP
 ;-----------------------------------------;
 
-FIRE_SLIDER_    PROC    NEAR
+FIRE_SLIDER_    PROC    NEAR   
     CHECK_USER_CLICK:
     ; CHECK IF USER PRESSED A KEY
     MOV AH, 1
@@ -288,7 +320,7 @@ FIRE_SLIDER_    PROC    NEAR
     ; MOVE THE SLIDER
     MOVE_SLIDER:
     ; CLEAR THE SLIDER CURRENT POSITION
-    DRAW_SLIDER SLIDER_CURRENT_ROW, SLIDER_WHITE
+    DRAW_SLIDER SLIDER_CURRENT_ROW, WHITE
     ; CHECK WHETHER TO MOVE IT UP OR DOWN
     CMP SLIDER_DIRECTION, 0
     JZ  DECREMENT_ROW
@@ -308,7 +340,7 @@ FIRE_SLIDER_    PROC    NEAR
     MOV SLIDER_DIRECTION, 1
     ; DRAW THE SLIDER NEW POSITION
     DRAW_NEW_SLIDER:
-    DRAW_SLIDER SLIDER_CURRENT_ROW, SLIDER_BLACK
+    DRAW_SLIDER SLIDER_CURRENT_ROW, BLACK
     ; DELAY 
     MOV AH,86H
     MOV CX,0 ;CX:DX = Interval in microseconds
@@ -320,24 +352,8 @@ FIRE_SLIDER_    PROC    NEAR
 FIRE_SLIDER_    ENDP
 ;-----------------------------------------;
 
-CLEAR_GAME_SCREEN_  PROC    NEAR
-    ; GO TO GRAPHICS MODE (800 x 600)
-    MOV AX, 4F02H
-    MOV BX, 103H
-    INT 10H
-    ; CLEAR THE SCREEN (EXCEPT THE STATUS BAR)
-    MOV DX, 0
-    MOV AX, 0C0FH   ;AH = 0C FOR INT, AL = OF (WHITE)
-    CLEAR_ALL_ROWS:
-        MOV CX, 0
-        CLEAR_ROW:
-            INT 10H
-            INC CX
-            CMP CX, 800
-        JNZ CLEAR_ROW
-    INC DX
-    CMP DX, 480
-    JNZ CLEAR_ALL_ROWS
+CLEAR_GAME_SCREEN_  PROC    NEAR    
+    DRAW_RECTANGLE  0, 0, 799, 479, WHITE  
     RET
 CLEAR_GAME_SCREEN_  ENDP
 
