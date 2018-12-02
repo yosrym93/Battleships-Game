@@ -300,7 +300,7 @@ MAIN_MENU_     PROC NEAR
         JZ EXIT
         JNZ NOTVALID            ;JZ WHERE ???
   CONT2:       
-  CLEAR_SCREEN 
+  CLEAR_GAME_SCREEN BLACK 
      RET 
   EXIT:
         HLT
@@ -337,7 +337,7 @@ GET_LEVEL_     PROC NEAR
         CMP CL,32H
         JNZ NOTVALID2
   BACK:
-        CLEAR_SCREEN 0H,800,0H,480,WHITE
+        CLEAR_GAME_SCREEN WHITE
         RET
 GET_LEVEL_     ENDP
 ;-------------------------------------;
