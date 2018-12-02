@@ -1,4 +1,5 @@
 INCLUDE drawgrid.inc
+INCLUDE statbar.inc
 .MODEL LARGE
 .386
 
@@ -9,6 +10,8 @@ INCLUDE drawgrid.inc
 ;---------------- COLORS ------------------------------------
 BLACK               DB  00H
 WHITE               DB  0FH
+WBLACK              DW  0000H
+WWHITE              DW  000FH
 
 ;---------------- SLIDER DATA ------------------------------------
 SLIDER_COLUMN       EQU 480
@@ -18,6 +21,7 @@ SPACE_SCANCODE      EQU 39H
 SLIDER_DIRECTION    DB  0   ; 0 UP, 1 DOWN
 SLIDER_MAX_UP       EQU  5
 SLIDER_MAX_DOWN     EQU 473
+
 
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
 LEVEL               DB     1   ; 1 OR 2
@@ -43,7 +47,7 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
                     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
 
 ;---------------- PLAYER 1 DATA ----------------------------------
-P1_USERNAME         DB  20, ?, 20DUP ('?')
+P1_USERNAME         DB  20, ?, 20 DUP ('?')
 P1_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
@@ -111,7 +115,7 @@ P1_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2
 
 
 ;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB  20, ?, 20DUP ('?')
+P2_USERNAME         DB  20, ?, 20 DUP ('?')
 P2_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P2 ATTACKS ---------------------------------------------
@@ -176,20 +180,31 @@ P2_SHIP10 LABEL BYTE
 P2_SHIP10_N_CELLS                  DB  SHIP10_N_CELLS             ; TOTAL NUMBER OF CELLS
 P2_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2, Y2, X3, Y3, ...)
 
-;--NADER-----------------------------------------------------------
+;--NADER-----------------------------------------------------------; Most of those variables are experimental
 SCORE_CONSTANT_TEXT                     DB  "'s Score: "
-
-
+PLAYER1                                 DB  20,7,"PLAYER1"
+PLAYER2                                 DB  20,7,"PLAYER2"
+STATUS_TEST                             DB  37,2, "- This is a test notification message"
+SCORE1                                  DB  28
+SCORE1_STRING                           DB  2 DUP(?)
+SCORE2                                  DB  7
+SCORE2_STRING                           DB  2 DUP(?)
 
 .CODE
 MAIN PROC FAR
 MOV AX, @DATA
 MOV DS, AX
+MOV ES,AX
 
 CLEAR_GAME_SCREEN
 DRAW_GRID
+DRAW_STATUS_BAR_TEMPLATE PLAYER1, PLAYER2, SCORE_CONSTANT_TEXT
+PRINT_NOTIFICATION_MESSAGE STATUS_TEST
+PRINT_PLAYER1_SCORE PLAYER1,SCORE1,SCORE1_STRING
+PRINT_PLAYER2_SCORE PLAYER2,SCORE2,SCORE2_STRING
 DRAW_SLIDER_BAR
 FIRE_SLIDER
+
 
 HLT
 MAIN    ENDP
@@ -276,7 +291,7 @@ DRAW_SLIDER_BAR_    PROC    NEAR
         ADD CX, 1  ;DISTANCE BETWEEN COLUMNS
         CMP CX, 476 ;LAST LINE AT CX = 460 SO STOP WHEN CX + 44 = 504
     JNZ DRAW_ALL_BARS
-    DRAW_SLIDER SLIDER_INITIAL_ROW, SLIDER_BLACK
+    DRAW_SLIDER SLIDER_INITIAL_ROW, WBLACK
     RET
 DRAW_SLIDER_BAR_    ENDP
 ;-----------------------------------------;
@@ -295,7 +310,7 @@ FIRE_SLIDER_    PROC    NEAR
     ; MOVE THE SLIDER
     MOVE_SLIDER:
     ; CLEAR THE SLIDER CURRENT POSITION
-    DRAW_SLIDER SLIDER_CURRENT_ROW, SLIDER_WHITE
+    DRAW_SLIDER SLIDER_CURRENT_ROW, WWHITE
     ; CHECK WHETHER TO MOVE IT UP OR DOWN
     CMP SLIDER_DIRECTION, 0
     JZ  DECREMENT_ROW
@@ -315,7 +330,7 @@ FIRE_SLIDER_    PROC    NEAR
     MOV SLIDER_DIRECTION, 1
     ; DRAW THE SLIDER NEW POSITION
     DRAW_NEW_SLIDER:
-    DRAW_SLIDER SLIDER_CURRENT_ROW, SLIDER_BLACK
+    DRAW_SLIDER SLIDER_CURRENT_ROW, WBLACK
     ; DELAY 
     MOV AH,86H
     MOV CX,0 ;CX:DX = Interval in microseconds
