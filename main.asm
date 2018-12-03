@@ -7,6 +7,12 @@ INCLUDE NADER.INC
 .STACK 64
 .DATA
 
+;---------------- STATUS BAR - NADER------------------------; Most of those variables are experimental
+SCORE_CONSTANT_TEXT                     DB  10,"'s Score: "
+STATUS_TEST                             DB  37,"- This is a test notification message"
+P1_SCORE_STRING                         DB  2 DUP(?)
+P2_SCORE_STRING                         DB  2 DUP(?)
+
 ;---------------- COORDINATES TRANSFER PARAMETERS ----------
 GRID1_X            DW  ?
 GRID2_X            DW  ?
@@ -40,7 +46,7 @@ WHITE               DB  0FH
 BLUE                DB  01H
 LIGHT_BLUE          DB  09H
 LIGHT_GRAY          DB  07H
-DARK_GRAY          DB  08H
+DARK_GRAY           DB  08H
 
 ;---------------- DRAW RECTANGLE PARAMETERS ----------------------
 X1                  DW  ?
@@ -82,7 +88,7 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
 
 ;---------------- PLAYER 1 DATA ----------------------------------
 P1_USERNAME         DB  20, ?, 20 DUP ('?')
-P1_SCORE            DB    TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+P1_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
 ;GRID CELLS THAT P1 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
@@ -127,8 +133,8 @@ MOV DS, AX
 MOV ES, AX
 
 INITIALIZE_PROGRAM
-;USER_NAMES
-;MAIN_MENU
+USER_NAMES
+MAIN_MENU
 GET_LEVEL
 CLEAR_GAME_SCREEN   WHITE
 DRAW_GRID
