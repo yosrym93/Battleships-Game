@@ -7,11 +7,46 @@ INCLUDE NADER.INC
 .STACK 64
 .DATA
 
+;---------------- STATUS BAR - NADER------------------------; Most of those variables are experimental
+SCORE_CONSTANT_TEXT                     DB  10,"'s Score: "
+STATUS_TEST                             DB  37,"- This is a test notification message"
+P1_SCORE_STRING                         DB  2 DUP(?)
+P2_SCORE_STRING                         DB  2 DUP(?)
+
+;---------------- COORDINATES TRANSFER PARAMETERS ----------
+GRID1_X            DW  ?
+GRID2_X            DW  ?
+GRID1_Y            DW  ?
+GRID2_Y            DW  ?
+PIXELS1_X          DW  ?
+PIXELS2_X          DW  ?
+PIXELS1_Y          DW  ?
+PIXELS2_Y          DW  ?
+
+;---------------- GAME SCREEN ------------------------------
+GAME_SCREEN_MAX_X   EQU 799
+GAME_SCREEN_MAX_Y   EQU 479
+ 
+;---------------- GRID  ------------------------------------
+GRID_SIZE_MAX            EQU 400
+GRID_SQUARE_SIZE_1       EQU 44
+GRID_SQUARE_SIZE_2       EQU 22
+GRID_SQUARE_SIZE         DW  ?
+GRID_MAX_COORDINATE_1    EQU 16
+GRID_MAX_COORDINATE_2    EQU 33
+GRID_MAX_COORDINATE      DW  ?
+GRID_CORNER1_X           EQU 20
+GRID_CORNER1_Y           EQU 19
+GRID_CORNER2_X           EQU 460
+GRID_CORNER2_Y           EQU 459
+
 ;---------------- COLORS ----------------------------------------
 BLACK               DB  00H
 WHITE               DB  0FH
 BLUE                DB  01H
 LIGHT_BLUE          DB  09H
+LIGHT_GRAY          DB  07H
+DARK_GRAY           DB  08H
 
 ;---------------- DRAW RECTANGLE PARAMETERS ----------------------
 X1                  DW  ?
@@ -20,6 +55,7 @@ Y1                  DW  ?
 Y2                  DW  ?
 
 ;---------------- SLIDER DATA ------------------------------------
+SLIDER_BAR_COLUMN   EQU 470
 SLIDER_COLUMN       EQU 480
 SLIDER_INITIAL_ROW  EQU 473
 SLIDER_CURRENT_ROW  DW  SLIDER_INITIAL_ROW
@@ -38,22 +74,13 @@ ENTER_LEVEL_MSG             DB    1EH,'- CHOOSE THE GAME LEVEL 1 OR 2'
 TO_END_PROG_MSG             DB    1DH,'TO END THE PROGRAME PRESS ESC'
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
 LEVEL               DB     2,?,?,?   ; 1 OR 2
-GRID_SIZE           EQU  100         ; 10 X 10
 
-;---- NUMBER OF SHIPS --------------------------------------------
+;---------------- COMMON SHIPS DATA ------------------------------
+ALL_SHIPS           DW     2    ; CONTAINS THE OFFSETS OF P1_SHIPS AND P2_SHIPS
+
+;---- NUMBER OF SHIPS AND CELLS ----------------------------------
 N_SHIPS          EQU 10   ; PLAYER 1 NUMBER OF SHIPS
-
-;---- SHIPS SIZES (NUMBER OF CELLS) ------------------------------
-SHIP1_N_CELLS    EQU 5
-SHIP2_N_CELLS    EQU 4
-SHIP3_N_CELLS    EQU 4
-SHIP4_N_CELLS    EQU 4
-SHIP5_N_CELLS    EQU 3
-SHIP6_N_CELLS    EQU 3
-SHIP7_N_CELLS    EQU 3
-SHIP8_N_CELLS    EQU 2
-SHIP9_N_CELLS    EQU 2
-SHIP10_N_CELLS   EQU 2
+TOTAL_N_CELLS    EQU 32
 
 ;---- SHIPS SELECTION CELLS --------------------------------------
 SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACES WITH ACTUAL CELLS COORDINATES
@@ -61,143 +88,43 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
 
 ;---------------- PLAYER 1 DATA ----------------------------------
 P1_USERNAME         DB  20, ?, 20 DUP ('?')
-P1_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+P1_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
 ;GRID CELLS THAT P1 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
-P1_ATTACKS_ONTARGET DB  (GRID_SIZE * 2) DUP(?)
-P1_ATTACH_MISSED    DB  (GRID_SIZE * 2) DUP(?)            
+P1_ATTACKS_ONTARGET DB  (GRID_SIZE_MAX * 2) DUP(?)
+P1_ATTACH_MISSED    DB  (GRID_SIZE_MAX * 2) DUP(?)            
 
-;-------- P1 SHIPS -----------------------------------------------
-
-;---- SHIPS DATA ARRAY -------------------------------------------
-P1_SHIPS            DB  N_SHIPS DUP(?)                            ; SHOULD BE INITIALIZED WITH SHIPS OFFSETS
-
-;---- SHIPS DATA -------------------------------------------------
-
-;-- SHIP 1 -------------------------------------------------------
-P1_SHIP1 LABEL BYTE
-P1_SHIP1_N_CELLS                   DB  SHIP1_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP1_GRID_CELLS                DB  (SHIP1_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 2 -------------------------------------------------------
-P1_SHIP2 LABEL BYTE
-P1_SHIP2_N_CELLS                   DB  SHIP2_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP2_GRID_CELLS                DB  (SHIP2_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 3 -------------------------------------------------------
-P1_SHIP3 LABEL BYTE
-P1_SHIP3_N_CELLS                   DB  SHIP3_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP3_N_UNDESTROYED_CELLS       DB  SHIP3_N_CELLS              ; NUMBER OF UNDESTROYED CELLS
-P1_SHIP3_GRID_CELLS                DB  (SHIP3_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 4 -------------------------------------------------------
-P1_SHIP4 LABEL BYTE
-P1_SHIP4_N_CELLS                   DB  SHIP4_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP4_GRID_CELLS                DB  (SHIP4_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 5 -------------------------------------------------------
-P1_SHIP5 LABEL BYTE
-P1_SHIP5_N_CELLS                   DB  SHIP5_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP5_GRID_CELLS                DB  (SHIP5_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 6 -------------------------------------------------------
-P1_SHIP6 LABEL BYTE
-P1_SHIP6_N_CELLS                   DB  SHIP6_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP6_GRID_CELLS                DB  (SHIP6_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 7 -------------------------------------------------------
-P1_SHIP7 LABEL BYTE
-P1_SHIP7_N_CELLS                   DB  SHIP7_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP7_GRID_CELLS                DB  (SHIP7_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 8 -------------------------------------------------------
-P1_SHIP8 LABEL BYTE
-P1_SHIP8_N_CELLS                   DB  SHIP8_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP8_GRID_CELLS                DB  (SHIP8_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 9 -------------------------------------------------------
-P1_SHIP9 LABEL BYTE
-P1_SHIP9_N_CELLS                   DB  SHIP9_N_CELLS              ; TOTAL NUMBER OF CELLS
-P1_SHIP9_GRID_CELLS                DB  (SHIP9_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 10 -------------------------------------------------------
-P1_SHIP10 LABEL BYTE
-P1_SHIP10_N_CELLS                  DB  SHIP10_N_CELLS             ; TOTAL NUMBER OF CELLS
-P1_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2, Y2, X3, Y3, ...)
+;-------- P1 SHIPS DATA ------------------------------------------
+P1_SHIPS LABEL BYTE
+P1_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(?)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
+                                                         ; POINT2_X, POINT2_Y
+P1_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
+P1_SHIPS_REMAINING_CELLS    DB  N_SHIPS DUP(?)            ; NUMBER OF REMAINING CELLS FOR EACH SHIP
+P1_SHIPS_IS_VERTICAL        DB  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
+P1_SHIPS_IS_DRAWN           DW  N_SHIPS DUP(0)            ; IS THE SHIP DRAWN ON THE GRID YET? (0: NO, 1: YES)   
 
 
 ;---------------- PLAYER 2 DATA ----------------------------------
 P2_USERNAME         DB  20, ?, 20 DUP ('?')
-P2_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+P2_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P2 ATTACKS ---------------------------------------------
 ;GRID CELLS THAT P2 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
-P2_ATTACKS_ONTARGET DB  (GRID_SIZE * 2) DUP(?)
-P2_ATTACH_MISSED    DB  (GRID_SIZE * 2) DUP(?)  
+P2_ATTACKS_ONTARGET DB  (GRID_SIZE_MAX * 2) DUP(?)
+P2_ATTACH_MISSED    DB  (GRID_SIZE_MAX * 2) DUP(?)  
 
-;-------- P2 SHIPS -----------------------------------------------
+;-------- P2 SHIPS DATA ------------------------------------------
+P2_SHIPS LABEL BYTE
+P2_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(?)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
+                                                         ; POINT2_X, POINT2_Y
+P2_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
+P2_SHIPS_REMAINING_CELLS    DB  N_SHIPS DUP(?)            ; NUMBER OF REMAINING CELLS FOR EACH SHIP
+P2_SHIPS_IS_VERTICAL        DB  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
+P2_SHIPS_IS_DRAWN           DW  N_SHIPS DUP(0)            ; IS THE SHIP DRAWN ON THE GRID YET? (0: NO, 1: YES)                    
 
-;---- SHIPS DATA ARRAY -------------------------------------------
-P2_SHIPS            DB  N_SHIPS DUP(?)                            ; SHOULD BE INITIALIZED WITH SHIPS OFFSETS
 
-;---- SHIPS DATA -------------------------------------------------
 
-;-- SHIP 1 -------------------------------------------------------
-P2_SHIP1 LABEL BYTE
-P2_SHIP1_N_CELLS                   DB  SHIP1_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP1_GRID_CELLS                DB  (SHIP1_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 2 -------------------------------------------------------
-P2_SHIP2 LABEL BYTE
-P2_SHIP2_N_CELLS                   DB  SHIP2_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP2_GRID_CELLS                DB  (SHIP2_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 3 -------------------------------------------------------
-P2_SHIP3 LABEL BYTE
-P2_SHIP3_N_CELLS                   DB  SHIP3_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP3_GRID_CELLS                DB  (SHIP3_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 4 -------------------------------------------------------
-P2_SHIP4 LABEL BYTE
-P2_SHIP4_N_CELLS                   DB  SHIP4_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP4_GRID_CELLS                DB  (SHIP4_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 5 -------------------------------------------------------
-P2_SHIP5 LABEL BYTE
-P2_SHIP5_N_CELLS                   DB  SHIP5_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP5_GRID_CELLS                DB  (SHIP5_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 6 -------------------------------------------------------
-P2_SHIP6 LABEL BYTE
-P2_SHIP6_N_CELLS                   DB  SHIP6_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP6_GRID_CELLS                DB  (SHIP6_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 7 -------------------------------------------------------
-P2_SHIP7 LABEL BYTE
-P2_SHIP7_N_CELLS                   DB  SHIP7_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP7_GRID_CELLS                DB  (SHIP7_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 8 -------------------------------------------------------
-P2_SHIP8 LABEL BYTE
-P2_SHIP8_N_CELLS                   DB  SHIP8_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP8_GRID_CELLS                DB  (SHIP8_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 9 -------------------------------------------------------
-P2_SHIP9 LABEL BYTE
-P2_SHIP9_N_CELLS                   DB  SHIP9_N_CELLS              ; TOTAL NUMBER OF CELLS
-P2_SHIP9_GRID_CELLS                DB  (SHIP9_N_CELLS * 2) DUP(?) ; (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;-- SHIP 10 -------------------------------------------------------
-P2_SHIP10 LABEL BYTE
-P2_SHIP10_N_CELLS                  DB  SHIP10_N_CELLS             ; TOTAL NUMBER OF CELLS
-P2_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2, Y2, X3, Y3, ...)
-
-;--NADER-----------------------------------------------------------; Most of those variables are experimental
-SCORE_CONSTANT_TEXT                     DB  10,"'s Score: "
-STATUS_TEST                             DB  37,"- This is a test notification message"
-P1_SCORE_STRING                           DB  2 DUP(?)
-P2_SCORE_STRING                           DB  2 DUP(?)
 
 .CODE
 MAIN PROC FAR
@@ -219,15 +146,128 @@ PRINT_PLAYER1_SCORE
 PRINT_PLAYER2_SCORE
 
 DRAW_SLIDER_BAR
-FIRE_SLIDER
+;FIRE_SLIDER
+DRAW_SELECTION_SHIPS 1
+         
 
 
 HLT
 RET
 MAIN    ENDP
+
 ;-------------------------------------;
 ;---------- PROCEDURES ---------------;
 ;-------------------------------------;
+
+DRAW_SELECTION_SHIPS_   PROC    NEAR
+    ; PARAMETERS AL: 1 OR 2 (PLAYER)
+    MOV CX, 0
+    CMP AL, 1
+    JNZ PLAYER2_SELECTION_SHIPS
+    MOV DI, OFFSET P1_SHIPS_SIZES
+    MOV SI, OFFSET P1_SHIPS_IS_DRAWN
+    JMP DRAW_ALL_SELECTION_SHIPS
+    PLAYER2_SELECTION_SHIPS:
+    MOV DI, OFFSET P2_SHIPS_SIZES
+    MOV SI, OFFSET P2_SHIPS_IS_DRAWN
+    DRAW_ALL_SELECTION_SHIPS:
+        CMP WORD PTR [SI], 1
+        JZ DRAW_NEXT_SELECTION_SHIP
+        MOV AX, GRID_MAX_COORDINATE
+        SUB AX, [DI]
+        MOV GRID1_X, AX
+        MOV BX, GRID_MAX_COORDINATE
+        MOV GRID2_X, BX
+        MOV GRID1_Y, CX
+        MOV GRID2_Y, CX
+        DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y
+        DRAW_NEXT_SELECTION_SHIP:
+        ADD DI, 2
+        ADD SI, 2
+        INC CX
+        CMP CX, N_SHIPS
+    JNZ DRAW_ALL_SELECTION_SHIPS
+    RET
+DRAW_SELECTION_SHIPS_   ENDP
+;-------------------------------------;
+INITIALIZE_SHIPS_ARRAY_     PROC    NEAR
+    MOV BX, OFFSET ALL_SHIPS
+    MOV WORD PTR [BX], OFFSET P1_SHIPS
+    ADD BX, 2
+    MOV WORD PTR [BX], OFFSET P2_SHIPS
+    RET
+INITIALIZE_SHIPS_ARRAY_    ENDP
+    
+;-------------------------------------;
+DRAW_SHIP_      PROC    NEAR
+    ; PARAMETERS
+    ; AX = POINT1_X, BX = POINT1_Y, CX = POINT2_X, DX = POINT2_Y
+    GRID_TO_PIXELS AX, BX, CX, DX
+    ; MOVE THE SECOND POINT FROM THE UPPER LEFT CORNER TO THE LOWER RIGHT CORNER
+    MOV AX, PIXELS2_X
+    ADD AX, GRID_SQUARE_SIZE
+    MOV PIXELS2_X, AX
+    MOV AX, PIXELS2_Y
+    ADD AX, GRID_SQUARE_SIZE
+    MOV PIXELS2_Y, AX
+    ; ADJUST SHIP SIZE (SMALLER THAN GRID)
+    ; SET MARGIN
+    MOV AX, 10
+    DIV LEVEL   ; MARGIN = 6 / LEVEL 
+    ADD PIXELS1_X, AX
+    ADD PIXELS1_Y, AX
+    SUB PIXELS2_X, AX
+    SUB PIXELS2_Y, AX
+    ; DRAW THE SHIP
+    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS2_X, PIXELS2_Y, LIGHT_GRAY
+    ; DRAW SHIP BORDERS
+    DEC PIXELS1_X
+    DEC PIXELS1_Y
+    INC PIXELS2_X
+    INC PIXELS2_Y
+    
+    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS2_X, PIXELS1_Y, DARK_GRAY
+    DRAW_RECTANGLE PIXELS1_X, PIXELS2_Y, PIXELS2_X, PIXELS2_Y, DARK_GRAY 
+    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS1_X, PIXELS2_Y, DARK_GRAY 
+    DRAW_RECTANGLE PIXELS2_X, PIXELS1_Y, PIXELS2_X, PIXELS2_Y, DARK_GRAY     
+    
+    RET
+DRAW_SHIP_  ENDP
+;-------------------------------------;
+GRID_TO_PIXELS_     PROC    NEAR
+    ; PARAMETERS
+    ; GRID1_X, GRID1_Y, GRID2_X, GRID2_Y
+    ; GRID TO PIXELS (UPPER LEFT CORNER)
+    
+    ; OUTPUT
+    ; PIXEL1_X, PIXEL1_Y, PIXEL2_X, PIXEL2_Y
+    
+    ; PIXEL X = GRID_CORNER1_X + GRID_SQUARE_SIZE * GRID_X
+    ; PIXEL Y = GRID_CORNER1_Y + GRID_SQUARE_SIZE * GRID_Y
+    
+    MOV AX, GRID_SQUARE_SIZE
+    MUL GRID1_X
+    ADD AX, GRID_CORNER1_X
+    MOV PIXELS1_X, AX 
+
+    MOV AX, GRID_SQUARE_SIZE
+    MUL GRID1_Y
+    ADD AX, GRID_CORNER1_Y
+    MOV PIXELS1_Y, AX 
+
+    MOV AX, GRID_SQUARE_SIZE
+    MUL GRID2_X
+    ADD AX, GRID_CORNER1_X
+    MOV PIXELS2_X, AX 
+
+    MOV AX, GRID_SQUARE_SIZE
+    MUL GRID2_Y
+    ADD AX, GRID_CORNER1_Y
+    MOV PIXELS2_Y, AX
+    
+    RET
+GRID_TO_PIXELS_     ENDP
+;-------------------------------------;   
 DRAW_RECTANGLE_   PROC  NEAR    
     ;PARAMETERS
     ; X1, Y1, X2, Y2, AL = COLOR
@@ -260,11 +300,6 @@ PRINT_MESSAGE_    PROC NEAR
       RET
 
 PRINT_MESSAGE_    ENDP
-;-------------------------------------;
-CLEAR_SCREEN_    PROC NEAR        ;CLEAR AN SPECIFIC PART IN THE GAME
-     DRAW_RECTANGLE 0H,800,0H,480,BLACK     
-     RET       
-CLEAR_SCREEN_     ENDP
 ;-------------------------------------;
 GET_USER_NAME_     PROC NEAR
      PRINT_MESSAGE PLEASE_ENTER_YOUR_NAME_MSG , 1025H , 0FF0FH
@@ -347,42 +382,55 @@ GET_LEVEL_     PROC NEAR
         MOV BX,DX                  ;CHECK THAT THE USER INPUT 1 OR 2 
         MOV CL,[BX+2]
         CMP CL,31H
-        JZ  BACK
+        JZ  SET_LEVEL1_GRID
         CMP CL,32H
         JNZ NOTVALID2
+        JMP SET_LEVEL2_GRID
+  SET_LEVEL1_GRID:
+        MOV GRID_SQUARE_SIZE, GRID_SQUARE_SIZE_1
+        MOV GRID_MAX_COORDINATE, GRID_MAX_COORDINATE_1
+        JMP BACK
+  SET_LEVEL2_GRID:
+        MOV GRID_SQUARE_SIZE, GRID_SQUARE_SIZE_2
+        MOV GRID_MAX_COORDINATE, GRID_MAX_COORDINATE_2
   BACK:
         CLEAR_GAME_SCREEN WHITE
         RET
 GET_LEVEL_     ENDP
 ;-------------------------------------;
-DRAW_GRID_  PROC    NEAR    
+DRAW_GRID_  PROC    NEAR
+    ; DI AND SI ARE VALUES TO STOP LOOPING AT  
+    MOV DI, GRID_CORNER2_X
+    ADD DI, GRID_SQUARE_SIZE
+    MOV SI, GRID_CORNER2_Y
+    ADD SI, GRID_SQUARE_SIZE
     ; DRAW GRID COLUMNS
-    MOV CX, 20
-    MOV DX, 19      ;INITIAL POINT: (20,19)
+    MOV CX, GRID_CORNER1_X
+    MOV DX, GRID_CORNER1_Y      ;INITIAL POINT: (20,19)
     MOV AX, 0C00H   ;AH = 0C FOR INT, AL = O0 (BLACK)
     DRAW_ALL_COLUMNS:
-        MOV DX, 19  ;START DRAWING EVERY COLUMN FROM THE INITIAL ROW
+        MOV DX, GRID_CORNER1_Y  ;START DRAWING EVERY COLUMN FROM THE INITIAL ROW
         DRAW_COLUMN:
             INT 10H
             INC DX
-            CMP DX, 460
+            CMP DX, GRID_CORNER2_Y + 1
         JNZ DRAW_COLUMN
-        ADD CX, 44  ;DISTANCE BETWEEN COLUMNS
-        CMP CX, 504 ;LAST LINE AT CX = 460 SO STOP WHEN CX + 44 = 504
+        ADD CX, GRID_SQUARE_SIZE  ;DISTANCE BETWEEN COLUMNS
+        CMP CX, DI ;LAST LINE AT CX = GRID_CORNER2_X SO STOP AT CX = GRID_CORNER2_X + GRID_SQUARE_SIZE = DI
     JNZ DRAW_ALL_COLUMNS
     ; DRAW GRID ROWS
-    MOV CX, 20
-    MOV DX, 19      ;INITIAL POINT: (20,19)
+    MOV CX, GRID_CORNER1_X
+    MOV DX, GRID_CORNER1_Y      ;INITIAL POINT: (20,19)
     MOV AX, 0C00H   ;AH = 0C FOR INT, AL = O0 (BLACK)
     DRAW_ALL_ROWS:
-        MOV CX, 20  ;START DRAWING EVERY ROW FROM THE INITIAL COLUMN
+        MOV CX, GRID_CORNER1_X  ;START DRAWING EVERY ROW FROM THE INITIAL COLUMN
         DRAW_ROW:
             INT 10H
             INC CX
-            CMP CX, 461
+            CMP CX, GRID_CORNER2_X + 1
         JNZ DRAW_ROW
-        ADD DX, 44  ;DISTANCE BETWEEN ROWS
-        CMP DX, 503 ;LAST LINE AT DX = 459 SO STOP WHEN DX + 44 = 503
+        ADD DX, GRID_SQUARE_SIZE  ;DISTANCE BETWEEN ROWS
+        CMP DX, SI ;LAST LINE AT DX = GRID_CORNER2_Y SO STOP AT DX = GRID_CORNER2_Y + GRID_SQUARE_SIZE = SI
     JNZ DRAW_ALL_ROWS
     RET
 DRAW_GRID_  ENDP
@@ -417,7 +465,7 @@ DRAW_SLIDER_    ENDP
 ;-----------------------------------------;
 
 DRAW_SLIDER_BAR_    PROC    NEAR   
-    MOV CX, 470
+    MOV CX, SLIDER_BAR_COLUMN
     MOV DX, SLIDER_MAX_UP      ;INITIAL POINT
     MOV AX, 0C00H   ;AH = 0C FOR INT, AL = O0 (BLACK)
     DRAW_ALL_BARS:
@@ -428,7 +476,7 @@ DRAW_SLIDER_BAR_    PROC    NEAR
             CMP DX, SLIDER_MAX_DOWN
         JNZ DRAW_BAR
         ADD CX, 1  ;DISTANCE BETWEEN COLUMNS
-        CMP CX, 476 ;LAST LINE AT CX = 460 SO STOP WHEN CX + 44 = 504
+        CMP CX, SLIDER_BAR_COLUMN + 6 ; SO THAT SLIDER BAR WIDTH = 5
     JNZ DRAW_ALL_BARS
     DRAW_SLIDER SLIDER_INITIAL_ROW, LIGHT_BLUE
     RET
@@ -586,7 +634,7 @@ PRINT_PLAYER2_SCORE_   ENDP
 CLEAR_GAME_SCREEN_  PROC    NEAR
     ; PARAMETERS
     ; AL = COLOR   
-    DRAW_RECTANGLE  0, 0, 799, 479, AL  
+    DRAW_RECTANGLE  0, 0, GAME_SCREEN_MAX_X, GAME_SCREEN_MAX_Y, AL  
     RET
 CLEAR_GAME_SCREEN_  ENDP
 
