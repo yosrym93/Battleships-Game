@@ -1,5 +1,6 @@
 INCLUDE YOSRY.INC
 INCLUDE AHMAD.INC
+INCLUDE NADER.INC
 .MODEL LARGE
 .386
 
@@ -59,8 +60,8 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
                     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
 
 ;---------------- PLAYER 1 DATA ----------------------------------
-P1_USERNAME         DB    14H,?,20 DUP('$') 
-P1_SCORE            DB    37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+P1_USERNAME         DB  20, ?, 20 DUP ('?')
+P1_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
 ;GRID CELLS THAT P1 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
@@ -127,7 +128,7 @@ P1_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2
 
 
 ;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB  14H,?,20 DUP('$') 
+P2_USERNAME         DB  20, ?, 20 DUP ('?')
 P2_SCORE            DB  37 ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P2 ATTACKS ---------------------------------------------
@@ -192,6 +193,12 @@ P2_SHIP10 LABEL BYTE
 P2_SHIP10_N_CELLS                  DB  SHIP10_N_CELLS             ; TOTAL NUMBER OF CELLS
 P2_SHIP10_GRID_CELLS               DB  (SHIP10_N_CELLS * 2) DUP(?); (X1 , Y1, X2, Y2, X3, Y3, ...)
 
+;--NADER-----------------------------------------------------------; Most of those variables are experimental
+SCORE_CONSTANT_TEXT                     DB  10,"'s Score: "
+STATUS_TEST                             DB  37,"- This is a test notification message"
+P1_SCORE_STRING                           DB  2 DUP(?)
+P2_SCORE_STRING                           DB  2 DUP(?)
+
 .CODE
 MAIN PROC FAR
 MOV AX, @DATA
@@ -204,6 +211,13 @@ MAIN_MENU
 GET_LEVEL
 CLEAR_GAME_SCREEN   WHITE
 DRAW_GRID
+
+DRAW_STATUS_BAR_TEMPLATE P1_USERNAME, P2_USERNAME, SCORE_CONSTANT_TEXT
+PRINT_NOTIFICATION_MESSAGE STATUS_TEST,2
+
+PRINT_PLAYER1_SCORE
+PRINT_PLAYER2_SCORE
+
 DRAW_SLIDER_BAR
 FIRE_SLIDER
 
@@ -420,7 +434,6 @@ DRAW_SLIDER_BAR_    PROC    NEAR
     RET
 DRAW_SLIDER_BAR_    ENDP
 ;-----------------------------------------;
-
 FIRE_SLIDER_    PROC    NEAR   
     CHECK_USER_CLICK:
     ; CHECK IF USER PRESSED A KEY
@@ -465,6 +478,110 @@ FIRE_SLIDER_    PROC    NEAR
     STOP_SLIDER:
     RET
 FIRE_SLIDER_    ENDP
+;-----------------------------------------;
+DRAW_STATUS_BAR_TEMPLATE_   PROC    NEAR
+;NOTIFICATION BAR                        
+    MOV AX, 0C0FH
+    MOV CX,0
+    MOV DX,545  
+    LOOP1:
+    INT 10H
+    INC CX
+    CMP CX,800
+    JNZ LOOP1
+;CHAT BAR                   
+    MOV CX,0    ;STARTING FROM THE LEFT EDGE
+    MOV DX,496  ;HEIGHT VALUE
+    LOOP2:
+    INT 10H
+    INC CX
+    CMP CX,800  ;ENDING AT THE RIGHT EDGE
+    JNZ LOOP2
+
+    PRINT_MESSAGE P1_USERNAME+1,2000H,0FH
+    PRINT_MESSAGE P2_USERNAME+1,2100H,0FH
+;SCORE BAR                       
+    ;PLAYER 1 SCORE
+    PRINT_MESSAGE P1_USERNAME+1,1E00H,0FH
+    
+    MOV DH,1EH ;Y
+    MOV DL,P1_USERNAME+1  ;X
+    PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
+
+    ;PLAYER 2 SCORE
+    PRINT_MESSAGE P2_USERNAME+1,1E40H,0FH
+    
+    MOV DH,1EH ;Y
+    MOV DL,P2_USERNAME+1  ;X
+    ADD DL,40H
+    PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
+ 
+    RET
+DRAW_STATUS_BAR_TEMPLATE_   ENDP
+;-----------------------------------------;
+PRINT_NOTIFICATION_MESSAGE_   PROC    NEAR
+;INDEX = 1 -> MESSAGE #1
+;INDEX = 2 -> MESSAGE #2
+;prints notification messages
+    
+    MOV CX,0
+    MOV AX,1301H
+    MOV BX,BP
+    MOV CL,[BX]
+    ADD BP,1
+    MOV BX,000FH
+    INT 10H  
+ 
+    RET
+PRINT_NOTIFICATION_MESSAGE_   ENDP
+;-----------------------------------------;
+PRINT_PLAYER1_SCORE_   PROC    NEAR
+    
+    ;DECIMAL_TO_STRING:
+    MOV AX,0
+    MOV AL,P1_SCORE
+    MOV BL,10
+    DIV BL
+    MOV P1_SCORE_STRING, AL
+    MOV P1_SCORE_STRING+1, AH
+    ADD P1_SCORE_STRING,48
+    ADD P1_SCORE_STRING+1,48
+
+    MOV AX,1301H
+    MOV DH,1EH ;Y
+    MOV DL,P1_USERNAME+1 ;X
+    ADD DL,10
+    MOV BP,OFFSET P1_SCORE_STRING
+    MOV CX,2         ;SIZE
+    MOV BX,000FH
+    INT 10H
+ 
+    RET
+PRINT_PLAYER1_SCORE_   ENDP
+;-----------------------------------------;
+PRINT_PLAYER2_SCORE_   PROC    NEAR
+    
+    ;DECIMAL_TO_STRING:
+    MOV AX,0
+    MOV AL,P2_SCORE
+    MOV BL,10
+    DIV BL
+    MOV P2_SCORE_STRING, AL
+    MOV P2_SCORE_STRING+1, AH
+    ADD P2_SCORE_STRING,48
+    ADD P2_SCORE_STRING+1,48
+
+    MOV AX,1301H
+    MOV DH,1EH ;Y
+    MOV DL,P2_USERNAME+1 ;X
+    ADD DL,4AH
+    MOV BP,OFFSET P2_SCORE_STRING
+    MOV CX,2         ;SIZE
+    MOV BX,000FH
+    INT 10H
+ 
+    RET
+PRINT_PLAYER2_SCORE_   ENDP
 ;-----------------------------------------;
 CLEAR_GAME_SCREEN_  PROC    NEAR
     ; PARAMETERS
