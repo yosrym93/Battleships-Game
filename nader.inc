@@ -1,3 +1,7 @@
+;-------------------------------------------;
+;------------ STATUSBAR MACROS -------------;
+;-------------------------------------------;
+
 DRAW_STATUS_BAR_TEMPLATE      MACRO     ;DRAWS STATUSBAR WITH DEFAULT PLAYER NAMES                      
          
 CALL DRAW_STATUS_BAR_TEMPLATE_              
@@ -28,3 +32,23 @@ CALL PRINT_PLAYER2_SCORE_
 ENDM                    PRINT_PLAYER2_SCORE 
 ;------------------------------------------------------------------------;
 
+;-------------------------------------------;
+;--------------- GRID MACROS ---------------;
+;-------------------------------------------;
+
+CLICK_TO_GRID	MACRO   
+;Waits for a click, converts its position to both grid coordinates
+; and pixels(obviously)
+
+CALL CLICK_TO_GRID_
+
+ENDM			CLICK_TO_GRID
+;------------------------------------------------------------------------;
+
+DRAW_SHIP_ON_CLICK	MACRO   
+;waits for two points and draws a ship between them 
+
+CALL DRAW_SHIP_ON_CLICK_
+
+ENDM			DRAW_SHIP_ON_CLICK
+;------------------------------------------------------------------------;

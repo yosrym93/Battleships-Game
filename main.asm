@@ -9,10 +9,14 @@ INCLUDE NADER.INC
 
 ;---------------- STATUS BAR - NADER------------------------; Most of those variables are experimental
 SCORE_CONSTANT_TEXT                     DB  10,"'s Score: "
-STATUS_TEST                             DB  37,"- This is a test notification message"
+STATUS_TEST1                            DB  17,"- CLICK1 RECORDED"
+STATUS_TEST2                            DB  17,"- CLICK2 RECORDED"
 P1_SCORE_STRING                         DB  2 DUP(?)
 P2_SCORE_STRING                         DB  2 DUP(?)
-
+MOUSE_POSX                              DW  ?
+MOUSE_POSY                              DW  ?
+MOUSE_GRIDX                             DB  ?
+MOUSE_GRIDY                             DB  ?
 ;---------------- COORDINATES TRANSFER PARAMETERS ----------
 GRID1_X            DW  ?
 GRID2_X            DW  ?
@@ -138,18 +142,17 @@ MAIN_MENU
 GET_LEVEL
 CLEAR_GAME_SCREEN   WHITE
 DRAW_GRID
-
 DRAW_STATUS_BAR_TEMPLATE P1_USERNAME, P2_USERNAME, SCORE_CONSTANT_TEXT
-PRINT_NOTIFICATION_MESSAGE STATUS_TEST,2
-
 PRINT_PLAYER1_SCORE
 PRINT_PLAYER2_SCORE
-
 DRAW_SLIDER_BAR
 ;FIRE_SLIDER
 DRAW_SELECTION_SHIPS 1
-         
 
+
+LOOP23:
+DRAW_SHIP_ON_CLICK
+JMP LOOP23
 
 HLT
 RET
@@ -158,7 +161,6 @@ MAIN    ENDP
 ;-------------------------------------;
 ;---------- PROCEDURES ---------------;
 ;-------------------------------------;
-
 DRAW_SELECTION_SHIPS_   PROC    NEAR
     ; PARAMETERS AL: 1 OR 2 (PLAYER)
     MOV CX, 0
@@ -630,7 +632,69 @@ PRINT_PLAYER2_SCORE_   PROC    NEAR
  
     RET
 PRINT_PLAYER2_SCORE_   ENDP
-;-----------------------------------------;
+;-------------------------------------;
+CLICK_TO_GRID_   PROC    NEAR 
+    ;Waits for a click, converts its position to both grid coordinates
+    ; and pixels(obviously)
+    MOV BX,0
+    MOV AX,3
+    WAIT_FOR_CLICK:
+    INT 33H
+    CMP BX,0
+    JZ WAIT_FOR_CLICK
+    MOV MOUSE_POSX,CX
+    MOV MOUSE_POSY,DX
+    SUB MOUSE_POSX,20      ;TRANSFORMING FROM SCREEN FRAME TO GRID FRAME
+    JC WAIT_FOR_CLICK
+    SUB MOUSE_POSY,19
+    JC WAIT_FOR_CLICK
+    CMP MOUSE_POSX,441
+    JNC WAIT_FOR_CLICK
+    CMP MOUSE_POSY,441
+    JNC WAIT_FOR_CLICK     ;All of those jumps are boundaries checks
+    
+    MOV AX,MOUSE_POSX
+    MOV DX,0
+    MOV BX,44
+    DIV BX
+    MOV MOUSE_GRIDX,AL
+    
+    MOV AX,MOUSE_POSY
+    MOV DX,0
+    DIV BX
+    MOV MOUSE_GRIDY,AL
+    RET
+CLICK_TO_GRID_   ENDP
+;-------------------------------------;
+DRAW_SHIP_ON_CLICK_   PROC    NEAR 
+    
+    CLICK_TO_GRID           ;FIRST POINT
+    MOV AX,0
+    MOV AL,MOUSE_GRIDX
+    MOV BX,0
+    MOV BL,MOUSE_GRIDY
+    PRINT_NOTIFICATION_MESSAGE STATUS_TEST1,1
+    ;DELAY
+    MOV AH,86H
+    MOV CX,000FH ;CX:DX = INTERVAL IN MICROSECONDS
+    MOV DX,4240H
+    INT 15H
+    
+    CLICK_TO_GRID           ;SECOND POINT
+    MOV CX,0
+    MOV CL,MOUSE_GRIDX
+    MOV DX,0
+    MOV DL,MOUSE_GRIDY
+    PRINT_NOTIFICATION_MESSAGE STATUS_TEST2,2
+    
+    ;SHOULD CHECK FOR DIAGONAL LINES
+    
+    
+    
+    DRAW_SHIP AX,BX,CX,DX
+    RET
+DRAW_SHIP_ON_CLICK_   ENDP
+;-----------------------------------------;    
 CLEAR_GAME_SCREEN_  PROC    NEAR
     ; PARAMETERS
     ; AL = COLOR   
