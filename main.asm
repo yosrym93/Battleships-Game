@@ -1,10 +1,25 @@
 INCLUDE YOSRY.INC
 INCLUDE AHMAD.INC
+INCLUDE NADER.INC
 .MODEL LARGE
 .386
 
 .STACK 64
 .DATA
+
+;---------------- ATTACK -----------------------------------
+SELECT_ATTACK_COLUMN_MSG                DB  84,"- Navigate through columns and press space "
+                                        DB  "to select the column of the attacked cell"
+FIRE_SLIDER_MSG                         DB  62,"Press SPACE to stop the slider at the row of the attacked cell"
+
+ATTACKX                                 DW ?        
+ATTACKY                                 DW ?               
+
+;---------------- STATUS BAR - NADER------------------------; Most of those variables are experimental
+SCORE_CONSTANT_TEXT                     DB  10,"'s Score: "
+STATUS_TEST                             DB  37,"- This is a test notification message"
+P1_SCORE_STRING                         DB  2 DUP(?)
+P2_SCORE_STRING                         DB  2 DUP(?)
 
 ;---------------- COORDINATES TRANSFER PARAMETERS ----------
 GRID1_X            DW  ?
@@ -22,16 +37,20 @@ GAME_SCREEN_MAX_Y   EQU 479
  
 ;---------------- GRID  ------------------------------------
 GRID_SIZE_MAX            EQU 400
-GRID_SQUARE_SIZE_1       EQU 44
-GRID_SQUARE_SIZE_2       EQU 22
+GRID_SQUARE_SIZE_MAX     EQU 44
 GRID_SQUARE_SIZE         DW  ?
-GRID_MAX_COORDINATE_1    EQU 16
-GRID_MAX_COORDINATE_2    EQU 33
+GRID_MAX_COORDINATE_MIN  EQU 16
 GRID_MAX_COORDINATE      DW  ?
 GRID_CORNER1_X           EQU 20
 GRID_CORNER1_Y           EQU 19
 GRID_CORNER2_X           EQU 460
 GRID_CORNER2_Y           EQU 459
+
+;---------------- COLUMN SELECTOR --------------------------
+COLUMN_SELECTOR_ROW                 EQU GRID_CORNER2_Y+2
+COLUMN_SELECTOR_CURRENT_COLUMN      DW  ?
+COLUMN_SELECTOR_MIN_COLUMN          DW  ?
+COLUMN_SELECTOR_MAX_COLUMN          DW  ?
 
 ;---------------- COLORS ----------------------------------------
 BLACK               DB  00H
@@ -39,7 +58,7 @@ WHITE               DB  0FH
 BLUE                DB  01H
 LIGHT_BLUE          DB  09H
 LIGHT_GRAY          DB  07H
-DARK_GRAY          DB  08H
+DARK_GRAY           DB  08H
 
 ;---------------- DRAW RECTANGLE PARAMETERS ----------------------
 X1                  DW  ?
@@ -52,10 +71,16 @@ SLIDER_BAR_COLUMN   EQU 470
 SLIDER_COLUMN       EQU 480
 SLIDER_INITIAL_ROW  EQU 473
 SLIDER_CURRENT_ROW  DW  SLIDER_INITIAL_ROW
-SPACE_SCANCODE      EQU 39H
 SLIDER_DIRECTION    DB  0   ; 0 UP, 1 DOWN
 SLIDER_MAX_UP       EQU  5
 SLIDER_MAX_DOWN     EQU 473
+
+;---------------- KEY SCAN CODES -------------------------------
+SPACE_SCANCODE      EQU 39H
+UP_SCANCODE         EQU 48H
+DOWN_SCANCODE       EQU 50H
+RIGHT_SCANCODE      EQU 4DH
+LEFT_SCANCODE       EQU 4BH
 
 ;---------------- MESSAGES DATA FOR THE USER -------------------
 PLEASE_ENTER_YOUR_NAME_MSG  DB    19H,'- PLEASE ENTER YOUR NAME:'
@@ -80,8 +105,8 @@ SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACE
                     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1 
 
 ;---------------- PLAYER 1 DATA ----------------------------------
-P1_USERNAME         DB    14H,?,20 DUP('$') 
-P1_SCORE            DB    TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+P1_USERNAME         DB  20, ?, 20 DUP ('?')
+P1_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P1 ATTACKS ---------------------------------------------
 ;GRID CELLS THAT P1 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
@@ -99,7 +124,7 @@ P1_SHIPS_IS_DRAWN           DW  N_SHIPS DUP(0)            ; IS THE SHIP DRAWN ON
 
 
 ;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB  14H,?,20 DUP('$') 
+P2_USERNAME         DB  20, ?, 20 DUP ('?')
 P2_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 
 ;-------- P2 ATTACKS ---------------------------------------------
@@ -131,10 +156,17 @@ INITIALIZE_PROGRAM
 GET_LEVEL
 CLEAR_GAME_SCREEN   WHITE
 DRAW_GRID
+
+DRAW_STATUS_BAR_TEMPLATE P1_USERNAME, P2_USERNAME, SCORE_CONSTANT_TEXT
+PRINT_PLAYER1_SCORE
+PRINT_PLAYER2_SCORE
+
 DRAW_SLIDER_BAR
 ;FIRE_SLIDER
 DRAW_SELECTION_SHIPS 1
-         
+
+GET_ATTACK_COORDINATES
+
 
 
 HLT
@@ -145,6 +177,107 @@ MAIN    ENDP
 ;---------- PROCEDURES ---------------;
 ;-------------------------------------;
 
+GET_ATTACK_COORDINATES_ PROC    NEAR
+    GET_ATTACK_COLUMN
+    PRINT_NOTIFICATION_MESSAGE  FIRE_SLIDER_MSG, 1
+    FIRE_SLIDER
+    MOV CX, COLUMN_SELECTOR_CURRENT_COLUMN
+    MOV BX, SLIDER_CURRENT_ROW
+    ; CONVERT PIXELS TO GRID COORDINATES
+    SUB CX, GRID_CORNER1_X
+    MOV DX, 0
+    MOV AX, CX
+    DIV GRID_SQUARE_SIZE
+    MOV ATTACKX, AX
+    SUB BX, GRID_CORNER1_Y
+    MOV DX, 0
+    MOV AX, BX
+    DIV GRID_SQUARE_SIZE 
+    MOV ATTACKY, AX
+    ;TEST
+    DRAW_SHIP    ATTACKX, ATTACKY, ATTACKX, ATTACKY
+    RET
+GET_ATTACK_COORDINATES_ ENDP    
+;-------------------------------------;
+GET_ATTACK_COLUMN_  PROC    NEAR
+    ; DRAW INITIAL COLUMN SELECTOR
+    DRAW_COLUMN_SELECTOR    COLUMN_SELECTOR_MIN_COLUMN, LIGHT_BLUE
+    MOV AX, COLUMN_SELECTOR_MIN_COLUMN
+    MOV COLUMN_SELECTOR_CURRENT_COLUMN, AX
+
+    ; DISPLAY MESSAGE
+    PRINT_NOTIFICATION_MESSAGE  SELECT_ATTACK_COLUMN_MSG, 1
+
+    GET_KEY_PRESSED:
+        MOV AH, 0
+        INT 16H
+        CMP AH, SPACE_SCANCODE
+        JZ SPACE_PRESSED
+        CMP AH, RIGHT_SCANCODE
+        JZ RIGHT_PRESSED
+        CMP AH, LEFT_SCANCODE
+        JZ LEFT_PRESSED
+        JMP GET_KEY_PRESSED
+
+        RIGHT_PRESSED:
+            DRAW_COLUMN_SELECTOR COLUMN_SELECTOR_CURRENT_COLUMN, WHITE
+            MOV AX, COLUMN_SELECTOR_MAX_COLUMN
+            CMP COLUMN_SELECTOR_CURRENT_COLUMN, AX
+            JZ REACHED_MAX_COLUMN
+            MOV AX, GRID_SQUARE_SIZE
+            ADD COLUMN_SELECTOR_CURRENT_COLUMN, AX
+            JMP DRAW_CS
+            REACHED_MAX_COLUMN:
+            MOV AX, COLUMN_SELECTOR_MIN_COLUMN
+            MOV COLUMN_SELECTOR_CURRENT_COLUMN, AX
+            DRAW_CS:
+            DRAW_COLUMN_SELECTOR COLUMN_SELECTOR_CURRENT_COLUMN, LIGHT_BLUE
+        JMP GET_KEY_PRESSED
+        LEFT_PRESSED:
+            DRAW_COLUMN_SELECTOR COLUMN_SELECTOR_CURRENT_COLUMN, WHITE
+            MOV AX, COLUMN_SELECTOR_MIN_COLUMN
+            CMP COLUMN_SELECTOR_CURRENT_COLUMN, AX
+            JZ REACHED_MIN_COLUMN
+            MOV AX, GRID_SQUARE_SIZE
+            SUB COLUMN_SELECTOR_CURRENT_COLUMN, AX
+            JMP DRAW_CS_
+            REACHED_MIN_COLUMN:
+            MOV AX, COLUMN_SELECTOR_MAX_COLUMN
+            MOV COLUMN_SELECTOR_CURRENT_COLUMN, AX
+            DRAW_CS_:
+            DRAW_COLUMN_SELECTOR COLUMN_SELECTOR_CURRENT_COLUMN, LIGHT_BLUE
+        JMP GET_KEY_PRESSED
+        SPACE_PRESSED:
+        RET
+GET_ATTACK_COLUMN_  ENDP        
+;-------------------------------------;
+
+SET_LEVEL_SETTINGS_  PROC   NEAR
+    ; PARAMETERS AL: 1 OR 2 (LEVEL)
+    ; GRID SQUARE SIZE
+    MOV BL, AL
+    MOV AX, GRID_SQUARE_SIZE_MAX
+    DIV BL
+    MOV AH, 0
+    MOV GRID_SQUARE_SIZE, AX
+    ; GRID MAX COORDINATE
+    MOV AX, GRID_MAX_COORDINATE_MIN
+    MUL BL
+    MOV GRID_MAX_COORDINATE, AX
+    ; COLUMN SELECTOR MIN AND MAX
+    MOV AX, GRID_SQUARE_SIZE
+    MOV BL, 2
+    DIV BL
+    MOV CL, AL
+    MOV CH, 0
+    ADD CX, GRID_CORNER1_X
+    MOV COLUMN_SELECTOR_MIN_COLUMN, CX
+    MOV AH, 0
+    MOV CX, GRID_CORNER2_X
+    SUB CX, AX
+    MOV COLUMN_SELECTOR_MAX_COLUMN, CX
+    RET
+SET_LEVEL_SETTINGS_ ENDP
 DRAW_SELECTION_SHIPS_   PROC    NEAR
     ; PARAMETERS AL: 1 OR 2 (PLAYER)
     MOV CX, 0
@@ -368,17 +501,15 @@ GET_LEVEL_     PROC NEAR
         MOV BX,DX                  ;CHECK THAT THE USER INPUT 1 OR 2 
         MOV CL,[BX+2]
         CMP CL,31H
-        JZ  SET_LEVEL1_GRID
+        JZ  SET_LEVEL1
         CMP CL,32H
         JNZ NOTVALID2
-        JMP SET_LEVEL2_GRID
-  SET_LEVEL1_GRID:
-        MOV GRID_SQUARE_SIZE, GRID_SQUARE_SIZE_1
-        MOV GRID_MAX_COORDINATE, GRID_MAX_COORDINATE_1
+        JMP SET_LEVEL2
+  SET_LEVEL1:
+        SET_LEVEL_SETTINGS 1
         JMP BACK
-  SET_LEVEL2_GRID:
-        MOV GRID_SQUARE_SIZE, GRID_SQUARE_SIZE_2
-        MOV GRID_MAX_COORDINATE, GRID_MAX_COORDINATE_2
+  SET_LEVEL2:
+        SET_LEVEL_SETTINGS 2
   BACK:
         CLEAR_GAME_SCREEN WHITE
         RET
@@ -450,6 +581,34 @@ DRAW_SLIDER_     PROC   NEAR
 DRAW_SLIDER_    ENDP 
 ;-----------------------------------------;
 
+DRAW_COLUMN_SELECTOR_     PROC   NEAR   
+    ; PARAMETERS
+    ; DI = COLUMN_SELECTOR_COLUMN, 
+    ; AL = COLOR
+    ;DRAW SLIDER
+    MOV CX, DI
+    MOV DX, COLUMN_SELECTOR_ROW 
+    DEC DX
+    MOV AH, 0CH ; AL = COLOR
+    MOV BX, 1
+    DRAW_ALL_COLUMN_SELECTOR_ROWS:
+        MOV DI, BX
+        DRAW_COLUMN_SELECTOR_ROW:
+            INT 10H
+            INC CX
+            DEC DI
+        JNZ DRAW_COLUMN_SELECTOR_ROW
+        MOV DI, BX
+        INC DI
+        SUB CX, DI
+        INC DX
+        ADD BX, 2
+        CMP BX, 15  ; TO INCREASE THE SIZE ADD 2 (MUST BE ALWAYS ODD)
+    JNZ DRAW_ALL_COLUMN_SELECTOR_ROWS
+    RET
+DRAW_COLUMN_SELECTOR_    ENDP 
+;-----------------------------------------;
+
 DRAW_SLIDER_BAR_    PROC    NEAR   
     MOV CX, SLIDER_BAR_COLUMN
     MOV DX, SLIDER_MAX_UP      ;INITIAL POINT
@@ -468,7 +627,6 @@ DRAW_SLIDER_BAR_    PROC    NEAR
     RET
 DRAW_SLIDER_BAR_    ENDP
 ;-----------------------------------------;
-
 FIRE_SLIDER_    PROC    NEAR   
     CHECK_USER_CLICK:
     ; CHECK IF USER PRESSED A KEY
@@ -513,6 +671,110 @@ FIRE_SLIDER_    PROC    NEAR
     STOP_SLIDER:
     RET
 FIRE_SLIDER_    ENDP
+;-----------------------------------------;
+DRAW_STATUS_BAR_TEMPLATE_   PROC    NEAR
+;NOTIFICATION BAR                        
+    MOV AX, 0C0FH
+    MOV CX,0
+    MOV DX,545  
+    LOOP1:
+    INT 10H
+    INC CX
+    CMP CX,800
+    JNZ LOOP1
+;CHAT BAR                   
+    MOV CX,0    ;STARTING FROM THE LEFT EDGE
+    MOV DX,496  ;HEIGHT VALUE
+    LOOP2:
+    INT 10H
+    INC CX
+    CMP CX,800  ;ENDING AT THE RIGHT EDGE
+    JNZ LOOP2
+
+    PRINT_MESSAGE P1_USERNAME+1,2000H,0FH
+    PRINT_MESSAGE P2_USERNAME+1,2100H,0FH
+;SCORE BAR                       
+    ;PLAYER 1 SCORE
+    PRINT_MESSAGE P1_USERNAME+1,1E00H,0FH
+    
+    MOV DH,1EH ;Y
+    MOV DL,P1_USERNAME+1  ;X
+    PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
+
+    ;PLAYER 2 SCORE
+    PRINT_MESSAGE P2_USERNAME+1,1E40H,0FH
+    
+    MOV DH,1EH ;Y
+    MOV DL,P2_USERNAME+1  ;X
+    ADD DL,40H
+    PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
+ 
+    RET
+DRAW_STATUS_BAR_TEMPLATE_   ENDP
+;-----------------------------------------;
+PRINT_NOTIFICATION_MESSAGE_   PROC    NEAR
+;INDEX = 1 -> MESSAGE #1
+;INDEX = 2 -> MESSAGE #2
+;prints notification messages
+    
+    MOV CX,0
+    MOV AX,1301H
+    MOV BX,BP
+    MOV CL,[BX]
+    ADD BP,1
+    MOV BX,000FH
+    INT 10H  
+ 
+    RET
+PRINT_NOTIFICATION_MESSAGE_   ENDP
+;-----------------------------------------;
+PRINT_PLAYER1_SCORE_   PROC    NEAR
+    
+    ;DECIMAL_TO_STRING:
+    MOV AX,0
+    MOV AL,P1_SCORE
+    MOV BL,10
+    DIV BL
+    MOV P1_SCORE_STRING, AL
+    MOV P1_SCORE_STRING+1, AH
+    ADD P1_SCORE_STRING,48
+    ADD P1_SCORE_STRING+1,48
+
+    MOV AX,1301H
+    MOV DH,1EH ;Y
+    MOV DL,P1_USERNAME+1 ;X
+    ADD DL,10
+    MOV BP,OFFSET P1_SCORE_STRING
+    MOV CX,2         ;SIZE
+    MOV BX,000FH
+    INT 10H
+ 
+    RET
+PRINT_PLAYER1_SCORE_   ENDP
+;-----------------------------------------;
+PRINT_PLAYER2_SCORE_   PROC    NEAR
+    
+    ;DECIMAL_TO_STRING:
+    MOV AX,0
+    MOV AL,P2_SCORE
+    MOV BL,10
+    DIV BL
+    MOV P2_SCORE_STRING, AL
+    MOV P2_SCORE_STRING+1, AH
+    ADD P2_SCORE_STRING,48
+    ADD P2_SCORE_STRING+1,48
+
+    MOV AX,1301H
+    MOV DH,1EH ;Y
+    MOV DL,P2_USERNAME+1 ;X
+    ADD DL,4AH
+    MOV BP,OFFSET P2_SCORE_STRING
+    MOV CX,2         ;SIZE
+    MOV BX,000FH
+    INT 10H
+ 
+    RET
+PRINT_PLAYER2_SCORE_   ENDP
 ;-----------------------------------------;
 CLEAR_GAME_SCREEN_  PROC    NEAR
     ; PARAMETERS
