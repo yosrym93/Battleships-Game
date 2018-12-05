@@ -47,3 +47,14 @@ GET_LEVEL MACRO
       POPA
 ENDM GETLEVEL
 ;-------------------------------------------------------------------; 
+CELL_HAS_SHIP MACRO GRIDX_ ,GRIDY_ ,PLAYER_WHO_IS_ATTACKED
+PUSHA
+MOV AX, GRIDX_
+MOV GRID1_X, AX
+MOV AX, GRIDY_
+MOV GRID1_Y, AX
+Mov Al,PLAYER_WHO_IS_ATTACKED
+CALL CELL_HAS_SHIP_
+POPA
+ENDM CELL_HAS_SHIP
+;-------------------------------------------------------------------; 
