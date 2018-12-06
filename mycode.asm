@@ -1,0 +1,348 @@
+INCLUDE YOSRY.INC
+INCLUDE AHMAD.INC
+INCLUDE NADER.INC
+.MODEL LARGE
+.STACK 64
+
+.DATA
+
+
+;---------------- STATUS BAR - NADER------------------------; Most of those variables are experimental
+
+Is_OnTarget                             DB    ?
+
+;---------------- CELLS SELECTOR------------------------; 
+SELECTOR_X1                             DW  20
+SELECTOR_Y1                             DW  19
+SELECTOR_X2                             DW  20
+SELECTOR_Y2                             DW  19
+SELECTOR_GRID_X1                        DW  0
+SELECTOR_GRID_Y1                        DW  0
+SELECTOR_GRID_X2                        DW  ?
+SELECTOR_GRID_Y2                        DW  ?
+UP_ORIENTATION                          DB  ?   ;ORIENTATION = 0 : INVALID
+DOWN_ORIENTATION                        DB  ?   ;            = 1 : VALID
+LEFT_ORIENTATION                        DB  ?
+RIGHT_ORIENTATION                       DB  ?
+;---------------- COORDINATES TRANSFER PARAMETERS ----------
+GRID1_X            DW  ?
+GRID2_X            DW  ?
+GRID1_Y            DW  ?
+GRID2_Y            DW  ?
+PIXELS1_X          DW  ?
+PIXELS2_X          DW  ?
+PIXELS1_Y          DW  ?
+PIXELS2_Y          DW  ?
+ 
+;---------------- GRID  ------------------------------------
+GRID_SIZE_MAX               EQU 400
+GRID_SQUARE_SIZE_MAX        EQU 44
+GRID_SQUARE_SIZE            DW  44
+GRID_MAX_COORDINATE_MIN     EQU 16
+GRID_MAX_COORDINATE         DW  ?
+GRID_CORNER1_X              EQU 20
+GRID_CORNER1_Y              EQU 19
+GRID_CORNER2_X              EQU 460
+GRID_CORNER2_Y              EQU 459
+GRID_CELLS_MAX_COORDINATE   EQU 9 ;SHOULD BE A WORD NOT A BYTE
+
+;---------------- KEY SCAN CODES -------------------------------
+SPACE_SCANCODE      EQU 39H
+UP_SCANCODE         EQU 48H
+DOWN_SCANCODE       EQU 50H
+RIGHT_SCANCODE      EQU 4DH
+LEFT_SCANCODE       EQU 4BH
+ENTER_SCANCODE      EQU 1CH
+
+;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
+LEVEL               DB     2,?,?,?   ; 1 OR 2
+
+;---------------- COMMON SHIPS DATA ------------------------------
+ALL_SHIPS           DW     2    ; CONTAINS THE OFFSETS OF P1_SHIPS AND P2_SHIPS
+
+;---- NUMBER OF SHIPS AND CELLS ----------------------------------
+N_SHIPS          EQU 10   ; PLAYER 1 NUMBER OF SHIPS
+TOTAL_N_CELLS    EQU 32     
+;-------- P2 SHIPS DATA ------------------------------------------
+P2_SHIPS LABEL BYTE
+P2_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(?)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
+                                                         ; POINT2_X, POINT2_Y
+P2_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
+P2_SHIPS_REMAINING_CELLS    DB  N_SHIPS DUP(?)            ; NUMBER OF REMAINING CELLS FOR EACH SHIP
+P2_SHIPS_IS_VERTICAL        DB  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
+P2_SHIPS_IS_DRAWN           DW  N_SHIPS DUP(0)            ; IS THE SHIP DRAWN ON THE GRID YET? (0: NO, 1: YES) 
+;-------- P1 SHIPS DATA ------------------------------------------
+P1_SHIPS LABEL BYTE
+P1_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(10)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
+                                                         ; POINT2_X, POINT2_Y
+P1_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
+P1_SHIPS_REMAINING_CELLS    DB  N_SHIPS DUP(?)            ; NUMBER OF REMAINING CELLS FOR EACH SHIP
+P1_SHIPS_IS_VERTICAL        DB  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
+P1_SHIPS_IS_DRAWN           DW  N_SHIPS DUP(0)            ; IS THE SHIP DRAWN ON THE GRID YET? (0: NO, 1: YES)
+                   
+
+
+.CODE
+
+MAIN    PROC FAR  
+        MOV AX,@DATA
+        MOV DS,AX
+        CELLS_SELECTOR 3
+        HLT
+RET
+MAIN    ENDP
+        
+        CELLS_SELECTOR_   PROC    NEAR 
+    ;PARAMETERS:
+   ;CX: SHIP SIZE 
+    DEC CX
+    MOV DX,GRID_SQUARE_SIZE
+    ADD SELECTOR_X2,DX
+    ADD SELECTOR_Y2,DX
+    MOV AX, 10
+    DIV LEVEL   ; MARGIN = 10 / LEVEL 
+    ADD SELECTOR_X1, AX
+    ADD SELECTOR_Y1, AX
+    SUB SELECTOR_X2, AX
+    SUB SELECTOR_Y2, AX
+    
+    
+WAIT_FOR_DIRECTION_KEY:
+    
+    MOV AH,0
+    INT 16H
+    CMP AH,ENTER_SCANCODE ;Checks if the user has already chosen the first cell of the selected ship
+    JE SELECTOR_SECOND_POINT
+    ;After getting DIRECTION key, remove the old selector icon, to draw the new one
+    
+    CMP AH,UP_SCANCODE 
+    JE SELECTOR_UP
+    CMP AH,DOWN_SCANCODE
+    JE SELECTOR_DOWN
+    CMP AH,LEFT_SCANCODE 
+    JE SELECTOR_LEFT
+    CMP AH,RIGHT_SCANCODE 
+    JE SELECTOR_RIGHT
+    
+SELECTOR_UP:
+    CMP SELECTOR_GRID_Y1,0    ;Boundaries check
+    JE WAIT_FOR_DIRECTION_KEY
+    DEC SELECTOR_GRID_Y1
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;checks whether the cell has a ship placed on it or not
+    CMP Is_OnTarget,0
+    JE  SELECTOR_UP_CONTINUE
+    INC SELECTOR_GRID_Y1            ;if there is a ship, reset selector grid coordinates to thier previous values
+    JMP WAIT_FOR_DIRECTION_KEY
+    SELECTOR_UP_CONTINUE:
+    SUB SELECTOR_Y1,DX
+    SUB SELECTOR_Y2,DX
+    JMP WAIT_FOR_DIRECTION_KEY 
+SELECTOR_DOWN:
+    CMP SELECTOR_GRID_Y1,GRID_CELLS_MAX_COORDINATE    ;Boundaries check
+    JE  WAIT_FOR_DIRECTION_KEY
+    INC SELECTOR_GRID_Y1
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;checks whether the cell has a ship placed on it or not
+    CMP Is_OnTarget,0
+    JE  SELECTOR_DOWN_CONTINUE
+    DEC SELECTOR_GRID_Y1            ;if there is a ship, reset selector grid coordinates to thier previous values
+    JMP WAIT_FOR_DIRECTION_KEY
+    SELECTOR_DOWN_CONTINUE:
+    ADD SELECTOR_Y1,DX
+    ADD SELECTOR_Y2,DX
+    JMP WAIT_FOR_DIRECTION_KEY   
+SELECTOR_LEFT:
+    CMP SELECTOR_GRID_X1,0    ;Boundaries check
+    JE  WAIT_FOR_DIRECTION_KEY
+    DEC SELECTOR_GRID_X1
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;checks whether the cell has a ship placed on it or not(FOR PLAYER 1!!!!!)
+    CMP Is_OnTarget,0
+    JE  SELECTOR_LEFT_CONTINUE
+    INC SELECTOR_GRID_X1            ;if there is a ship, reset selector grid coordinates to thier previous values
+    JMP WAIT_FOR_DIRECTION_KEY
+    SELECTOR_LEFT_CONTINUE:
+    SUB SELECTOR_X1,DX
+    SUB SELECTOR_X2,DX
+    JMP WAIT_FOR_DIRECTION_KEY 
+SELECTOR_RIGHT:
+    CMP SELECTOR_GRID_X1,GRID_CELLS_MAX_COORDINATE    ;Boundaries check
+    JE  WAIT_FOR_DIRECTION_KEY
+    INC SELECTOR_GRID_X1 
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;checks whether the cell has a ship placed on it or not
+    CMP Is_OnTarget,0
+    JE  SELECTOR_RIGHT_CONTINUE
+    DEC SELECTOR_GRID_X1            ;if there is a ship, reset selector grid coordinates to thier previous values
+    JMP WAIT_FOR_DIRECTION_KEY
+    SELECTOR_RIGHT_CONTINUE:   
+    ADD SELECTOR_X1,DX
+    ADD SELECTOR_X2,DX
+    JMP WAIT_FOR_DIRECTION_KEY
+    
+SELECTOR_SECOND_POINT:
+    
+UP_ORIENTATION_CHECK:
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX    ;COPY POINT 1 TO POINT 2
+    MOV DX,CX                  ;COPY SIZE TO DX
+    CMP SELECTOR_GRID_Y1,CX
+    JAE UP_ORIENTATION_SHIP_CHECK   
+    MOV UP_ORIENTATION,0
+    JMP DOWN_ORIENTATION_CHECK 
+    UP_ORIENTATION_SHIP_CHECK:     ;checks whether the up-region has ships placed in its direction 
+        DEC SELECTOR_GRID_Y2       ;Traverse on the y-axis upwards
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,1
+        CMP Is_OnTarget,0
+        JNE UP_ORIENTATION_INVALID
+        LOOP UP_ORIENTATION_SHIP_CHECK
+        MOV UP_ORIENTATION,1            ;ORIENTATION IS VALID
+        ;HIGHLIGHT ORIENTATION REGION
+        DEC SELECTOR_GRID_Y1
+        ;DRAW YELLOW RECTANGLE
+        INC SELECTOR_GRID_Y1
+        JMP DOWN_ORIENTATION_CHECK
+        UP_ORIENTATION_INVALID:
+           MOV UP_ORIENTATION,0 
+           
+DOWN_ORIENTATION_CHECK:
+    MOV CX,DX                  ;RETURN CX TO ITS ORIGINAL VALUE
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX    ;RETURN POINT 2 TO ITS INTIAL VALUE
+    
+    MOV SI,GRID_CELLS_MAX_COORDINATE
+    SUB SI,SELECTOR_GRID_Y1
+    CMP SI,CX
+    JAE DOWN_ORIENTATION_SHIP_CHECK   
+    MOV DOWN_ORIENTATION,0
+    JMP LEFT_ORIENTATION_CHECK 
+    DOWN_ORIENTATION_SHIP_CHECK:     ;checks whether the DOWN-region has ships placed in its direction 
+        INC SELECTOR_GRID_Y2       ;Traverse on the y-axis DOWNWARDS
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,1
+        CMP Is_OnTarget,0
+        JNE DOWN_ORIENTATION_INVALID
+        LOOP DOWN_ORIENTATION_SHIP_CHECK
+        MOV DOWN_ORIENTATION,1            ;ORIENTATION IS VALID
+        ;HIGHLIGHT ORIENTATION REGION
+        INC SELECTOR_GRID_Y1
+        ;DRAW YELLOW RECTANGLE
+        DEC SELECTOR_GRID_Y1
+        JMP LEFT_ORIENTATION_CHECK
+        DOWN_ORIENTATION_INVALID:
+        MOV DOWN_ORIENTATION,0 
+                          
+LEFT_ORIENTATION_CHECK:
+    MOV CX,DX                  ;RETURN CX TO ITS ORIGINAL VALUE
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX    ;RETURN POINT 2 TO ITS INTIAL VALUE
+    
+    CMP SELECTOR_GRID_X1,CX
+    JAE LEFT_ORIENTATION_SHIP_CHECK   
+    MOV LEFT_ORIENTATION,0
+    JMP RIGHT_ORIENTATION_CHECK 
+    LEFT_ORIENTATION_SHIP_CHECK:     ;checks whether the LEFT-region has ships placed in its direction 
+        DEC SELECTOR_GRID_X2       ;Traverse on the X-axis in the left direction
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,1
+        CMP Is_OnTarget,0
+        JNE LEFT_ORIENTATION_INVALID
+        LOOP LEFT_ORIENTATION_SHIP_CHECK
+        MOV LEFT_ORIENTATION,1            ;ORIENTATION IS VALID
+        ;HIGHLIGHT ORIENTATION REGION
+        DEC SELECTOR_GRID_X1
+        ;DRAW YELLOW RECTANGLE
+        INC SELECTOR_GRID_X1
+        JMP RIGHT_ORIENTATION_CHECK
+        LEFT_ORIENTATION_INVALID:
+        MOV LEFT_ORIENTATION,0
+RIGHT_ORIENTATION_CHECK:
+    MOV CX,DX                  ;RETURN CX TO ITS ORIGINAL VALUE
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX    ;RETURN POINT 2 TO ITS INTIAL VALUE
+    
+    MOV SI,GRID_CELLS_MAX_COORDINATE
+    SUB SI,SELECTOR_GRID_X1
+    CMP SI,CX
+    JAE RIGHT_ORIENTATION_SHIP_CHECK   
+    MOV RIGHT_ORIENTATION,0
+    JMP GET_SECOND_POINT 
+    RIGHT_ORIENTATION_SHIP_CHECK:     ;checks whether the RIGHT-region has ships placed in its direction 
+        INC SELECTOR_GRID_X2       ;Traverse on the X-axis in the RIGHT direction
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,1
+        CMP Is_OnTarget,0
+        JNE RIGHT_ORIENTATION_INVALID
+        LOOP RIGHT_ORIENTATION_SHIP_CHECK
+        MOV RIGHT_ORIENTATION,1            ;ORIENTATION IS VALID
+        ;HIGHLIGHT ORIENTATION REGION
+        INC SELECTOR_GRID_X1
+        ;DRAW YELLOW RECTANGLE
+        DEC SELECTOR_GRID_X1
+        JMP GET_SECOND_POINT
+        RIGHT_ORIENTATION_INVALID:
+        MOV RIGHT_ORIENTATION,0
+        
+GET_SECOND_POINT:
+                
+    
+    RET
+CELLS_SELECTOR_   ENDP
+;-------------------------------------;
+CELL_HAS_SHIP_   PROC    NEAR
+
+CMP AL, 1
+JNZ CHECK_PLAYER2_SHIPS
+MOV SI, OFFSET P1_SHIPS_POINTS
+MOV DI, OFFSET P1_SHIPS_SIZES
+MOV BX, OFFSET P1_SHIPS_IS_VERTICAL    
+JMP CHECK_ALL_SHIPS
+
+CHECK_PLAYER2_SHIPS:
+MOV SI, OFFSET P2_SHIPS_POINTS
+MOV DI, OFFSET P2_SHIPS_SIZES
+MOV BX, OFFSET P2_SHIPS_IS_VERTICAL 
+
+CHECK_ALL_SHIPS:
+
+CHECK_SHIP:              
+CMP [BX] ,1                 
+JNZ HORIZONTAL_SHIP        
+
+MOV AX,GRID1_Y
+CMP WORD PTR[SI + 2],AX                       
+JB EDIT_AND_CHECK_AGAIN
+MOV AX,GRID1_Y
+CMP WORD PTR[SI + 6],AX
+JA  EDIT_AND_CHECK_AGAIN
+MOV IS_ONTARGET,1
+RET
+
+
+HORIZONTAL_SHIP:  
+MOV AX,GRID1_X          
+CMP WORD PTR[SI],AX                      
+JB EDIT_AND_CHECK_AGAIN
+MOV AX,GRID1_X          
+CMP WORD PTR[SI + 4],AX
+JA  EDIT_AND_CHECK_AGAIN
+MOV IS_ONTARGET,1
+RET
+
+EDIT_AND_CHECK_AGAIN:
+ADD SI ,8
+INC DI
+INC BX
+CMP BX , N_SHIPS
+JNZ CHECK_SHIP
+MOV IS_ONTARGET,0
+RET
+
+CELL_HAS_SHIP_   ENDP   
+
+       END MAIN
+
+
+
