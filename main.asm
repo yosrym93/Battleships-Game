@@ -1,15 +1,15 @@
-include yosry.inc
-include ahmad.inc
-include nader.inc
-.model large
+INCLUDE YOSRY.INC
+INCLUDE AHMAD.INC
+INCLUDE NADER.INC
+.MODEL LARGE
 .386
 .STACK 64
 .DATA
 
 ;---------------- ATTACK -----------------------------------
-SELECT_ATTACK_COLUMN_MSG                DB  84,"- Navigate through columns and press space "
-                                        DB  "to select the column of the attacked cell"
-FIRE_SLIDER_MSG                         DB  62,"Press SPACE to stop the slider at the row of the attacked cell"
+SELECT_ATTACK_COLUMN_MSG                DB  84,"- NAVIGATE THROUGH COLUMNS AND PRESS SPACE "
+                                        DB  "TO SELECT THE COLUMN OF THE ATTACKED CELL"
+FIRE_SLIDER_MSG                         DB  62,"PRESS SPACE TO STOP THE SLIDER AT THE ROW OF THE ATTACKED CELL"
 ATTACKX                                 DW ?        
 ATTACKY                                 DW ?               
 IS_EVEN                                 DB ?
@@ -20,11 +20,11 @@ PLAYER_ATTACKED                         DB 2
 GAME_END                                DB 0
 
 ;---------------- STATUS BAR - ------------------------; 
-SCORE_CONSTANT_TEXT                     DB  10,"'s Score: "
+SCORE_CONSTANT_TEXT                     DB  10,"'S SCORE: "
 EMPTY_STRING                            DB  100,100 DUP(' ')
-;----------------------- Nader (EXPERIMENTAL) - ------------------------; 
-STATUS_TEST1                            DB  46,"- Please select the starting cell of your ship"
-STATUS_TEST2                            DB  44,"- Please select the orientation of your ship"
+;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
+STATUS_TEST1                            DB  46,"- PLEASE SELECT THE STARTING CELL OF YOUR SHIP"
+STATUS_TEST2                            DB  44,"- PLEASE SELECT THE ORIENTATION OF YOUR SHIP"
                          
 ;---------------- CELLS SELECTOR------------------------; 
 SELECTOR_X1                             DW  20
@@ -49,9 +49,9 @@ PIXELS2_X          DW  ?
 PIXELS1_Y          DW  ?
 PIXELS2_Y          DW  ?
 
-;---------------- game screen ------------------------------ Done
-game_screen_max_x   equ 799
-game_screen_max_y   equ 479
+;---------------- GAME SCREEN ------------------------------ DONE
+GAME_SCREEN_MAX_X   EQU 799
+GAME_SCREEN_MAX_Y   EQU 479
  
 ;---------------- GRID  ------------------------------------
 GRID_SIZE_MAX               EQU 400
@@ -72,7 +72,7 @@ COLUMN_SELECTOR_MIN_COLUMN          DW  ?
 COLUMN_SELECTOR_MAX_COLUMN          DW  ?
 
 ;---------------- COLORS ----------------------------------------
-Variable_Color      db  ?
+VARIABLE_COLOR      DB  ?
 BLACK               DB  00H
 BLUE                DB  01H
 GREEN               DB  02H
@@ -94,7 +94,7 @@ X1                  DW  ?
 X2                  DW  ?
 Y1                  DW  ?
 Y2                  DW  ?
-;---------------- slider data ------------------------------------ Done
+;---------------- SLIDER DATA ------------------------------------ DONE
 SLIDER_BAR_COLUMN   EQU 470
 SLIDER_COLUMN       EQU 480
 SLIDER_INITIAL_ROW  EQU 473
@@ -103,7 +103,7 @@ SLIDER_DIRECTION    DB  0   ; 0 UP, 1 DOWN
 SLIDER_MAX_UP       EQU  5
 SLIDER_MAX_DOWN     EQU 473
 
-;---------------- key scan codes ------------------------------- Done
+;---------------- KEY SCAN CODES ------------------------------- DONE
 SPACE_SCANCODE      EQU 39H
 F2_SCANCODE         EQU 3CH
 EXIT_SCANCODE       EQU 01H
@@ -113,15 +113,15 @@ DOWN_SCANCODE       EQU 50H
 RIGHT_SCANCODE      EQU 4DH
 LEFT_SCANCODE       EQU 4BH
 
-;---------------- Main Menu messages data for the user ------------  DOne
-PLEASE_ENTER_YOUR_NAME_MSG  db    19h,'- Please Enter Your Name:'
-PLAYER1_MSG                 db    7h ,'Player1' 
-PLAYER2_MSG                 db    7h ,'Player2'         
-PRESS_ENTER_MSG             db    1bh,'Press Enter Key To Continue' 
-TO_START_GAME_MSG           db    1ch,'- To Start the Game Press F2'
-ENTER_LEVEL_MSG             db    1eh,'- Choose The Game Level 1 or 2'
-TO_END_PROG_MSG             db    1Fh,'- To End the Programe Press Esc'
-;---------------- common data for both players -------------------
+;---------------- MAIN MENU MESSAGES DATA FOR THE USER ------------  DONE
+PLEASE_ENTER_YOUR_NAME_MSG  DB    19H,'- PLEASE ENTER YOUR NAME:'
+PLAYER1_MSG                 DB    7H ,'PLAYER1' 
+PLAYER2_MSG                 DB    7H ,'PLAYER2'         
+PRESS_ENTER_MSG             DB    1BH,'PRESS ENTER KEY TO CONTINUE' 
+TO_START_GAME_MSG           DB    1CH,'- TO START THE GAME PRESS F2'
+ENTER_LEVEL_MSG             DB    1EH,'- CHOOSE THE GAME LEVEL 1 OR 2'
+TO_END_PROG_MSG             DB    1FH,'- TO END THE PROGRAME PRESS ESC'
+;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
 LEVEL               DB     2,?,?,?   ; 1 OR 2
 
 ;---------------- COMMON SHIPS DATA ------------------------------
@@ -140,12 +140,12 @@ P1_USERNAME         DB  20, ?, 20 DUP ('?')
 P1_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 P1_SCORE_STRING                         DB  2 DUP(?)
 
-;-------- p1 attacks ---------------------------------------------
-;grid cells that p1 attacked (cell1x, cell1y, cell2x, cell2y, ..)
-P1_Attacks_OnTarget_Num     dw  0
-P1_Attacks_OnTarget         dw  (grid_size_max * 2) dup('*')
-P1_Attacks_Missed_Num       dw  0
-p1_Attacks_missed           dw  (grid_size_max * 2) dup('*') 
+;-------- P1 ATTACKS ---------------------------------------------
+;GRID CELLS THAT P1 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
+P1_ATTACKS_ONTARGET_NUM     DW  0
+P1_ATTACKS_ONTARGET         DW  (GRID_SIZE_MAX * 2) DUP('*')
+P1_ATTACKS_MISSED_NUM       DW  0
+P1_ATTACKS_MISSED           DW  (GRID_SIZE_MAX * 2) DUP('*') 
 
 
 ;-------- P1 SHIPS DATA ------------------------------------------
@@ -162,15 +162,15 @@ P2_USERNAME         DB  20, ?, 20 DUP ('?')
 P2_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 P2_SCORE_STRING                         DB  2 DUP(?)
 
-;-------- p2 attacks ---------------------------------------------
-;grid cells that p2 attacked (cell1x, cell1y, cell2x, cell2y, ..)
+;-------- P2 ATTACKS ---------------------------------------------
+;GRID CELLS THAT P2 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
 
-P2_Attacks_OnTarget_Num     dw  0
-P2_Attacks_OnTarget         dw  (grid_size_max * 2) dup('*')
-P2_Attacks_Missed_Num       dw  0
-P2_Attacks_missed           dw  (grid_size_max * 2) dup('*')  
+P2_ATTACKS_ONTARGET_NUM     DW  0
+P2_ATTACKS_ONTARGET         DW  (GRID_SIZE_MAX * 2) DUP('*')
+P2_ATTACKS_MISSED_NUM       DW  0
+P2_ATTACKS_MISSED           DW  (GRID_SIZE_MAX * 2) DUP('*')  
 
-;-------- p2 ships data ------------------------------------------
+;-------- P2 SHIPS DATA ------------------------------------------
 P2_SHIPS LABEL BYTE
 P2_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(?)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
                                                          ; WE DON'T NEED POINT 2 AS WE HAVE SIZE & VERTICAL OR HORIZONTAL
@@ -189,20 +189,20 @@ MOV DS, AX
 MOV ES, AX
 
         INITIALIZE_PROGRAM
-        USER_NAMES
+        ;USER_NAMES
         
 STARTING_POINT:
 
-        MAIN_MENU
+        ;MAIN_MENU
         GET_LEVEL
         CLEAR_GAME_SCREEN WHITE
         DRAW_GRID
         DRAW_STATUS_BAR_TEMPLATE 
         PRINT_PLAYER1_SCORE
         PRINT_PLAYER2_SCORE
-        DRAW_SLIDER_BAR 
-        DRAW_SELECTION_SHIPS 1
-        CELLS_SELECTOR 4
+        DRAW_SLIDER_BAR
+        ;DRAW_SELECTION_SHIPS 1
+        ;CELLS_SELECTOR 4
         START_THE_GAME
 
 
@@ -1042,7 +1042,6 @@ DRAW_SLIDER_     PROC   NEAR
     ;DRAW SLIDER
     MOV CX, SLIDER_COLUMN
     MOV DX, DI
-    DEC DX
     MOV AH, 0CH ; AL = COLOR
     MOV BX, 1
     DRAW_ALL_SLIDER_COLUMNS:
