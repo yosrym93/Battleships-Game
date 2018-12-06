@@ -7,9 +7,9 @@ INCLUDE NADER.INC
 .DATA
 
 ;---------------- ATTACK -----------------------------------
-SELECT_ATTACK_COLUMN_MSG                DB  84,"- NAVIGATE THROUGH COLUMNS AND PRESS SPACE "
-                                        DB  "TO SELECT THE COLUMN OF THE ATTACKED CELL"
-FIRE_SLIDER_MSG                         DB  62,"PRESS SPACE TO STOP THE SLIDER AT THE ROW OF THE ATTACKED CELL"
+SELECT_ATTACK_COLUMN_MSG                DB  84,"- Navigate through columns and press SPACE "
+                                        DB  "to select the column of the attacked cell"
+FIRE_SLIDER_MSG                         DB  62,"Press SPACE to stop the slider at the row of the attacked cell"
 ATTACKX                                 DW ?        
 ATTACKY                                 DW ?               
 IS_EVEN                                 DB ?
@@ -20,25 +20,33 @@ PLAYER_ATTACKED                         DB 2
 GAME_END                                DB 0
 
 ;---------------- STATUS BAR - ------------------------; 
-SCORE_CONSTANT_TEXT                     DB  10,"'S SCORE: "
+SCORE_CONSTANT_TEXT                     DB  10,"'s score: "
 EMPTY_STRING                            DB  100,100 DUP(' ')
 ;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
-STATUS_TEST1                            DB  46,"- PLEASE SELECT THE STARTING CELL OF YOUR SHIP"
-STATUS_TEST2                            DB  44,"- PLEASE SELECT THE ORIENTATION OF YOUR SHIP"
+START_PLACING_SHIPS_MSG                 DB  88,"- You are going to place your ships (on the right) on the grid now, press ENTER to start"
+STATUS_TEST1                            DB  70,"- Please select the starting cell of the highlighted ship on the right"
+STATUS_TEST2                            DB  68,"- Please select the orientation of the highlighted ship on the right"
                          
-;---------------- CELLS SELECTOR------------------------; 
-SELECTOR_X1                             DW  20
-SELECTOR_Y1                             DW  19
-SELECTOR_X2                             DW  20
-SELECTOR_Y2                             DW  19
-SELECTOR_GRID_X1                        DW  0
-SELECTOR_GRID_Y1                        DW  0
+;---------------- CELLS SELECTOR------------------------;
+SELECTOR_INITIAL_X1                     EQU 20
+SELECTOR_INITIAL_Y1                     EQU 19
+SELECTOR_INITIAL_X2                     EQU 20
+SELECTOR_INITIAL_Y2                     EQU 19
+SELECTOR_X1                             DW  ?
+SELECTOR_Y1                             DW  ?
+SELECTOR_X2                             DW  ?
+SELECTOR_Y2                             DW  ?
+SELECTOR_GRID_INITIAL_X1                EQU 0
+SELECTOR_GRID_INITIAL_Y1                EQU 0
+SELECTOR_GRID_X1                        DW  ?
+SELECTOR_GRID_Y1                        DW  ?
 SELECTOR_GRID_X2                        DW  ?
 SELECTOR_GRID_Y2                        DW  ?
 UP_ORIENTATION                          DB  ?   ;ORIENTATION = 0 : INVALID
 DOWN_ORIENTATION                        DB  ?   ;            = 1 : VALID
 LEFT_ORIENTATION                        DB  ?
 RIGHT_ORIENTATION                       DB  ?
+
 ;---------------- COORDINATES TRANSFER PARAMETERS ----------
 GRID1_X            DW  ?
 GRID2_X            DW  ?
@@ -54,16 +62,17 @@ GAME_SCREEN_MAX_X   EQU 799
 GAME_SCREEN_MAX_Y   EQU 479
  
 ;---------------- GRID  ------------------------------------
-GRID_SIZE_MAX               EQU 400
-GRID_SQUARE_SIZE_MAX        EQU 44
-GRID_SQUARE_SIZE            DW  ?
-GRID_MAX_COORDINATE_MIN     EQU 16
-GRID_MAX_COORDINATE         DW  ?
-GRID_CORNER1_X              EQU 20
-GRID_CORNER1_Y              EQU 19
-GRID_CORNER2_X              EQU 460
-GRID_CORNER2_Y              EQU 459
-GRID_CELLS_MAX_COORDINATE   EQU 9 ;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!SHOULD BE IMPLEMENTED AS A WORD NOT A BYTE (YOSRY)!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+GRID_SIZE_MAX                   EQU 400
+GRID_SQUARE_SIZE_MAX            EQU 44
+GRID_SQUARE_SIZE                DW  ?
+GRID_MAX_COORDINATE_MIN         EQU 16
+GRID_MAX_COORDINATE             DW  ?
+GRID_CORNER1_X                  EQU 20
+GRID_CORNER1_Y                  EQU 19
+GRID_CORNER2_X                  EQU 460
+GRID_CORNER2_Y                  EQU 459
+GRID_CELLS_MAX_COORDINATE_MAX   EQU 19 
+GRID_CELLS_MAX_COORDINATE       DW  ?
 
 ;---------------- COLUMN SELECTOR -------------------------- DONE
 COLUMN_SELECTOR_ROW                 EQU GRID_CORNER2_Y+2
@@ -114,26 +123,19 @@ RIGHT_SCANCODE      EQU 4DH
 LEFT_SCANCODE       EQU 4BH
 
 ;---------------- MAIN MENU MESSAGES DATA FOR THE USER ------------  DONE
-PLEASE_ENTER_YOUR_NAME_MSG  DB    19H,'- PLEASE ENTER YOUR NAME:'
-PLAYER1_MSG                 DB    7H ,'PLAYER1' 
-PLAYER2_MSG                 DB    7H ,'PLAYER2'         
-PRESS_ENTER_MSG             DB    1BH,'PRESS ENTER KEY TO CONTINUE' 
-TO_START_GAME_MSG           DB    1CH,'- TO START THE GAME PRESS F2'
-ENTER_LEVEL_MSG             DB    1EH,'- CHOOSE THE GAME LEVEL 1 OR 2'
-TO_END_PROG_MSG             DB    1FH,'- TO END THE PROGRAME PRESS ESC'
+PLEASE_ENTER_YOUR_NAME_MSG  DB    19H,'- Please enter your name:'
+PLAYER1_MSG                 DB    7H ,'player1' 
+PLAYER2_MSG                 DB    7H ,'player2'         
+PRESS_ENTER_MSG             DB    1BH,'Press ENTER key to continue' 
+TO_START_GAME_MSG           DB    1CH,'- To start the game press F2'
+ENTER_LEVEL_MSG             DB    1EH,'- Choose the game level 1 or 2'
+TO_END_PROG_MSG             DB    1EH,'- To end the program press ESC'
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
 LEVEL               DB     2,?,?,?   ; 1 OR 2
-
-;---------------- COMMON SHIPS DATA ------------------------------
-ALL_SHIPS           DW     2    ; CONTAINS THE OFFSETS OF P1_SHIPS AND P2_SHIPS   ???
 
 ;---- NUMBER OF SHIPS AND CELLS ----------------------------------  DONE
 N_SHIPS          EQU 10         ; PLAYER 1 NUMBER OF SHIPS
 TOTAL_N_CELLS    EQU 32
-
-;---- SHIPS SELECTION CELLS --------------------------------------
-SHIPS_SEL_CELLS     DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;TO BE REPLACES WITH ACTUAL CELLS COORDINATES
-                    DB  1, 1, 1, 1, 1, 1, 1, 1, 1, 1              ;?????
 
 ;---------------- PLAYER 1 DATA ----------------------------------
 P1_USERNAME         DB  20, ?, 20 DUP ('?')
@@ -150,12 +152,11 @@ P1_ATTACKS_MISSED           DW  (GRID_SIZE_MAX * 2) DUP('*')
 
 ;-------- P1 SHIPS DATA ------------------------------------------
 P1_SHIPS LABEL BYTE
-P1_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(?)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
+P1_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(-2)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
                                                          ; POINT2_X, POINT2_Y
 P1_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
 P1_SHIPS_REMAINING_CELLS    DB  N_SHIPS DUP(?)            ; NUMBER OF REMAINING CELLS FOR EACH SHIP
 P1_SHIPS_IS_VERTICAL        DB  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
-P1_SHIPS_IS_DRAWN           DW  N_SHIPS DUP(0)            ; IS THE SHIP DRAWN ON THE GRID YET? (0: NO, 1: YES)   
        
 ;---------------- PLAYER 2 DATA ----------------------------------
 P2_USERNAME         DB  20, ?, 20 DUP ('?')
@@ -172,15 +173,12 @@ P2_ATTACKS_MISSED           DW  (GRID_SIZE_MAX * 2) DUP('*')
 
 ;-------- P2 SHIPS DATA ------------------------------------------
 P2_SHIPS LABEL BYTE
-P2_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(?)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
+P2_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(-2)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
                                                          ; WE DON'T NEED POINT 2 AS WE HAVE SIZE & VERTICAL OR HORIZONTAL
                                                          ; BUT KEEP THEM NOT TO CALCUALTE THEM EACH TIME
 P2_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
 P2_SHIPS_REMAINING_CELLS    DB  N_SHIPS DUP(?)            ; NUMBER OF REMAINING CELLS FOR EACH SHIP
 P2_SHIPS_IS_VERTICAL        DB  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
-P2_SHIPS_IS_DRAWN           DW  N_SHIPS DUP(0)            ; IS THE SHIP DRAWN ON THE GRID YET IN THE SELECTION PART? 
-                                                          ; (0: NO, 1: YES)                    
-
 
 .CODE
 MAIN PROC FAR
@@ -201,12 +199,13 @@ STARTING_POINT:
         PRINT_PLAYER1_SCORE
         PRINT_PLAYER2_SCORE
         DRAW_SLIDER_BAR
-        ;DRAW_SELECTION_SHIPS 1
-        ;CELLS_SELECTOR 4
+        PLACE_SHIPS_ON_GRID 1
         START_THE_GAME
+    
+        
+   THE_END:   
 
-
-   THE_END: 
+    
 HLT
 RET
 MAIN    ENDP
@@ -214,6 +213,113 @@ MAIN    ENDP
 ;-------------------------------------;
 ;--------- YOUSRY PROCEDURES ---------;
 ;-------------------------------------;
+
+PLACE_SHIPS_ON_GRID_     PROC    NEAR
+    ; PARAMETERS
+    ; AL = PLAYER NUMBER (1 OR 2)
+    DRAW_SELECTION_SHIPS AL
+    MOV CX, 0
+    CMP AL, 1
+    JNZ PLAYER2_PLACE_SHIPS
+    ; PLAYER 1 PLACE SHIPS:
+    MOV BX, OFFSET P1_SHIPS_POINTS
+    MOV DI, OFFSET P1_SHIPS_SIZES
+    MOV SI, OFFSET P1_SHIPS_IS_VERTICAL
+    JMP DISPLAY_STARTING_MSG
+    
+    PLAYER2_PLACE_SHIPS:
+    MOV BX, OFFSET P2_SHIPS_POINTS
+    MOV DI, OFFSET P2_SHIPS_SIZES
+    MOV SI, OFFSET P2_SHIPS_IS_VERTICAL 
+    
+    DISPLAY_STARTING_MSG:
+    PUSH AX
+    PRINT_NOTIFICATION_MESSAGE  START_PLACING_SHIPS_MSG, 1
+    WAIT_FOR_ENTER_TO_START_PLACING_SHIPS:
+        MOV AH, 0
+        INT 16H
+        CMP AH, ENTER_SCANCODE
+        JNZ WAIT_FOR_ENTER_TO_START_PLACING_SHIPS
+    POP AX
+
+    MOV AH, 0
+    PUSH AX ; TO STORE THE PLAYER NUMBER
+    PLACE_SHIP:   
+        ; HIGHLIGHT THE SHIP TO BE PLACED
+        DRAW_SELECTION_SHIP CX, [DI], RED
+        
+        CELLS_SELECTOR [DI]
+        MOV AX, SELECTOR_GRID_X1
+        CMP AX, SELECTOR_GRID_X2
+        JZ SET_VERTICAL_SHIP
+        ; IF HORIZONTAL:
+        MOV BYTE PTR [SI], 0
+        ORDER_CELL_SELECTOR_POINTS 0
+        JMP STORE_SHIP_POINTS
+        
+        ;ELSE IF VERTICAL:
+        SET_VERTICAL_SHIP:
+        MOV BYTE PTR [SI], 1
+        ORDER_CELL_SELECTOR_POINTS 1    
+        
+        STORE_SHIP_POINTS:
+        MOV AX, SELECTOR_GRID_X1
+        MOV WORD PTR [BX], AX
+        ADD BX, 2
+        MOV AX, SELECTOR_GRID_Y1
+        MOV WORD PTR [BX], AX
+        ADD BX, 2
+        MOV AX, SELECTOR_GRID_X2
+        MOV WORD PTR [BX], AX
+        ADD BX, 2
+        MOV AX, SELECTOR_GRID_Y2
+        MOV WORD PTR [BX], AX
+        ADD BX, 2
+        
+        ; REMOVE THE HIGHLIGHTING
+        DRAW_SELECTION_SHIP CX, [DI] , DARK_GRAY
+        
+        POP AX
+        DRAW_ALL_SHIPS_ON_GRID AL
+        PUSH AX
+        
+        ; NEXT SHIP
+        ADD DI, 2
+        INC SI
+        INC CX
+        CMP CX, N_SHIPS
+    JNZ PLACE_SHIP
+    RET
+    
+PLACE_SHIPS_ON_GRID_     ENDP  
+;-------------------------------------;
+
+ORDER_CELL_SELECTOR_POINTS_   PROC    NEAR
+    ; PARAMETERS
+    ; AL = IS_VERTICAL (1 IF VERTICAL)
+    CMP AL, 1
+    JNZ ORDER_HORIZONTAL_SHIP_POINTS
+    MOV AX, SELECTOR_GRID_Y1
+    CMP AX, SELECTOR_GRID_Y2
+    JB POINTS_ORDERED
+    MOV BX, SELECTOR_GRID_Y2
+    MOV SELECTOR_GRID_Y1, BX
+    MOV SELECTOR_GRID_Y2, AX
+    JMP POINTS_ORDERED
+    
+    ORDER_HORIZONTAL_SHIP_POINTS:
+    MOV AX, SELECTOR_GRID_X1
+    CMP AX, SELECTOR_GRID_X2
+    JB POINTS_ORDERED
+    MOV BX, SELECTOR_GRID_X2
+    MOV SELECTOR_GRID_X1, BX
+    MOV SELECTOR_GRID_X2, AX
+    
+    POINTS_ORDERED:
+    RET
+ORDER_CELL_SELECTOR_POINTS_ ENDP
+;-------------------------------------;
+
 PIXELS_TO_GRID_    PROC    NEAR
     
    ; 4 PARAMETERS CX:PIXELX , DX:PIXELY , SI:OFFSET GRIDX  , DI:OFFSET GRIDY
@@ -301,6 +407,11 @@ SET_LEVEL_SETTINGS_  PROC   NEAR
     MOV AX, GRID_MAX_COORDINATE_MIN
     MUL BL
     MOV GRID_MAX_COORDINATE, AX
+    ; GRID CELLS MAX COORDINATE
+    MOV AX, GRID_CELLS_MAX_COORDINATE_MAX
+    DIV BL
+    MOV AH, 0
+    MOV GRID_CELLS_MAX_COORDINATE, AX
     ; COLUMN SELECTOR MIN AND MAX
     MOV AX, GRID_SQUARE_SIZE
     MOV BL, 2
@@ -322,25 +433,12 @@ DRAW_SELECTION_SHIPS_   PROC    NEAR
     CMP AL, 1
     JNZ PLAYER2_SELECTION_SHIPS
     MOV DI, OFFSET P1_SHIPS_SIZES
-    MOV SI, OFFSET P1_SHIPS_IS_DRAWN
     JMP DRAW_ALL_SELECTION_SHIPS
     PLAYER2_SELECTION_SHIPS:
     MOV DI, OFFSET P2_SHIPS_SIZES
-    MOV SI, OFFSET P2_SHIPS_IS_DRAWN
     DRAW_ALL_SELECTION_SHIPS:
-        CMP WORD PTR [SI], 1
-        JZ DRAW_NEXT_SELECTION_SHIP
-        MOV AX, GRID_MAX_COORDINATE
-        SUB AX, [DI]
-        MOV GRID1_X, AX
-        MOV BX, GRID_MAX_COORDINATE
-        MOV GRID2_X, BX
-        MOV GRID1_Y, CX
-        MOV GRID2_Y, CX
-        DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y
-        DRAW_NEXT_SELECTION_SHIP:
+        DRAW_SELECTION_SHIP CX, [DI], DARK_GRAY
         ADD DI, 2
-        ADD SI, 2
         INC CX
         CMP CX, N_SHIPS
     JNZ DRAW_ALL_SELECTION_SHIPS
@@ -348,19 +446,28 @@ DRAW_SELECTION_SHIPS_   PROC    NEAR
 DRAW_SELECTION_SHIPS_   ENDP
 ;-------------------------------------;
 
-INITIALIZE_SHIPS_ARRAY_     PROC    NEAR
-    MOV BX, OFFSET ALL_SHIPS
-    MOV WORD PTR [BX], OFFSET P1_SHIPS
-    ADD BX, 2
-    MOV WORD PTR [BX], OFFSET P2_SHIPS
+DRAW_SELECTION_SHIP_     PROC    NEAR
+    ; PARAMETERS
+    ; AX = INDEX, BX = SIZE, CL = BORDER_COLOR
+    MOV DX, GRID_MAX_COORDINATE
+    SUB DX, BX
+    INC DX
+    MOV GRID1_X, DX
+    MOV DX, GRID_MAX_COORDINATE
+    MOV GRID2_X, DX
+    MOV GRID1_Y, AX
+    MOV GRID2_Y, AX
+    MOV DL, CL
+    DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y, DL
     RET
-INITIALIZE_SHIPS_ARRAY_    ENDP
+DRAW_SELECTION_SHIP_ ENDP
+
 ;-------------------------------------;
 
 DRAW_SHIP_      PROC    NEAR
     ; PARAMETERS
-    ; AX = POINT1_X, BX = POINT1_Y, CX = POINT2_X, DX = POINT2_Y
-    GRID_TO_PIXELS AX, BX, CX, DX
+    ; AX = POINT1_X, BX = POINT1_Y, CX = POINT2_X, SI = POINT2_Y, DL = BORDER_COLOR
+    GRID_TO_PIXELS AX, BX, CX, SI
    
     ; MOVE THE SECOND POINT FROM THE UPPER LEFT CORNER TO THE LOWER RIGHT CORNER
     MOV AX, PIXELS2_X
@@ -371,8 +478,8 @@ DRAW_SHIP_      PROC    NEAR
     MOV PIXELS2_Y, AX
 
     ; ADJUST SHIP SIZE (SMALLER THAN GRID)   ; SET MARGIN
-    MOV AX, 10
-    DIV LEVEL   ; MARGIN = 10 / LEVEL   ;I EDIT 6 TO 10 IN THE COMMENT ;CHECK YOUSRY 
+    MOV AX, 12
+    DIV LEVEL   ; MARGIN = 10 / LEVEL   
     ADD PIXELS1_X, AX
     ADD PIXELS1_Y, AX
     SUB PIXELS2_X, AX
@@ -387,14 +494,28 @@ DRAW_SHIP_      PROC    NEAR
     INC PIXELS2_X
     INC PIXELS2_Y
     
-    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS2_X, PIXELS1_Y, DARK_GRAY        ;NOW THE FUNCTION DRAW LINES NOT RECTANGLES
-    DRAW_RECTANGLE PIXELS1_X, PIXELS2_Y, PIXELS2_X, PIXELS2_Y, DARK_GRAY 
-    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS1_X, PIXELS2_Y, DARK_GRAY 
-    DRAW_RECTANGLE PIXELS2_X, PIXELS1_Y, PIXELS2_X, PIXELS2_Y, DARK_GRAY     
+    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS2_X, PIXELS1_Y, DL        ;NOW THE FUNCTION DRAW LINES NOT RECTANGLES
+    DRAW_RECTANGLE PIXELS1_X, PIXELS2_Y, PIXELS2_X, PIXELS2_Y, DL 
+    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS1_X, PIXELS2_Y, DL 
+    DRAW_RECTANGLE PIXELS2_X, PIXELS1_Y, PIXELS2_X, PIXELS2_Y, DL
+    
+    ; SECOND LAYER 
+    DEC PIXELS1_X
+    DEC PIXELS1_Y
+    INC PIXELS2_X
+    INC PIXELS2_Y
+    
+    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS2_X, PIXELS1_Y, DL        ;NOW THE FUNCTION DRAW LINES NOT RECTANGLES
+    DRAW_RECTANGLE PIXELS1_X, PIXELS2_Y, PIXELS2_X, PIXELS2_Y, DL 
+    DRAW_RECTANGLE PIXELS1_X, PIXELS1_Y, PIXELS1_X, PIXELS2_Y, DL 
+    DRAW_RECTANGLE PIXELS2_X, PIXELS1_Y, PIXELS2_X, PIXELS2_Y, DL 
+
+    
     
     RET
 DRAW_SHIP_  ENDP
 ;-------------------------------------;
+
 GRID_TO_PIXELS_     PROC    NEAR
     ; PARAMETERS
     ; GRID1_X, GRID1_Y, GRID2_X, GRID2_Y
@@ -581,7 +702,7 @@ DRAW_ALL_SHIPS_ON_GRID_   PROC    NEAR
             MOV GRID2_X, DX
             MOV DX, WORD PTR [SI + 6]
             MOV GRID2_Y, DX
-            DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y
+            DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y, DARK_GRAY
             ADD SI, 8
             INC CX
             CMP CX, N_SHIPS
@@ -1269,8 +1390,17 @@ PRINT_PLAYER2_SCORE_   ENDP
 ;-------------------------------------;
 CELLS_SELECTOR_   PROC    NEAR 
     ;PARAMETERS:
-   ;CX: SHIP SIZE 
-   ;RETURNS: 2 POINTS IN GRID COORDINATES THAT THE PLAYER CHOSE (SELECTOR_GRID 1 AND 2) , THEY ARE NOT NECESSARILY IN THE RIGHT FORMAT
+    ;CX: SHIP SIZE 
+    ;RETURNS: 2 POINTS IN GRID COORDINATES THAT THE PLAYER CHOSE (SELECTOR_GRID 1 AND 2) , THEY ARE NOT NECESSARILY IN THE RIGHT FORMAT
+    
+    ; INITIAL VALUES
+    MOV SELECTOR_X1, SELECTOR_INITIAL_X1
+    MOV SELECTOR_Y1, SELECTOR_INITIAL_Y1
+    MOV SELECTOR_X2, SELECTOR_INITIAL_X2
+    MOV SELECTOR_Y2, SELECTOR_INITIAL_Y2
+    MOV SELECTOR_GRID_X1, SELECTOR_GRID_INITIAL_X1
+    MOV SELECTOR_GRID_Y1, SELECTOR_GRID_INITIAL_Y1
+    
     DEC CX
     MOV DX,GRID_SQUARE_SIZE
     ADD SELECTOR_X2,DX
@@ -1314,7 +1444,8 @@ SELECTOR_UP:
     SUB SELECTOR_Y2,DX
     JMP WAIT_FOR_DIRECTION_KEY 
 SELECTOR_DOWN:
-    CMP SELECTOR_GRID_Y1,GRID_CELLS_MAX_COORDINATE    ;BOUNDARIES CHECK
+    MOV AX, SELECTOR_GRID_Y1
+    CMP AX,GRID_CELLS_MAX_COORDINATE    ;BOUNDARIES CHECK
     JE  WAIT_FOR_DIRECTION_KEY
     INC SELECTOR_GRID_Y1
     CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
@@ -1340,7 +1471,8 @@ SELECTOR_LEFT:
     SUB SELECTOR_X2,DX
     JMP WAIT_FOR_DIRECTION_KEY 
 SELECTOR_RIGHT:
-    CMP SELECTOR_GRID_X1,GRID_CELLS_MAX_COORDINATE    ;BOUNDARIES CHECK
+    MOV AX, SELECTOR_GRID_X1
+    CMP AX,GRID_CELLS_MAX_COORDINATE    ;BOUNDARIES CHECK
     JE  WAIT_FOR_DIRECTION_KEY
     INC SELECTOR_GRID_X1 
     CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
