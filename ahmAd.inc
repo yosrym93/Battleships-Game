@@ -1,3 +1,11 @@
+;-------------------------------------------------------------------; 
+EVENORODD	MACRO	NUMBER	
+PUSHA
+MOV BX, NUMBER
+CALL EVENORODD_
+POPA
+ENDM EVENORODD
+
 ;-------------------------------------------------------------------;
 PRINT_MESSAGE MACRO MYMESSAGE , LOCATION,COLOR
       PUSHA   
@@ -138,4 +146,16 @@ PUSHA
 CALL START_THE_GAME_
 POPA
 ENDM START_THE_GAME
-
+;-------------------------------------------------------------------; 
+SCENE1_PLAYER_ATTACKS	MACRO
+PUSHA
+CALL SCENE1_PLAYER_ATTACKS_
+POPA
+ENDM SCENE1_PLAYER_ATTACKS 
+;-------------------------------------------------------------------; 
+SCENE2_PLAYER_WATCHES	MACRO
+PUSHA
+CALL SCENE2_PLAYER_WATCHES_	
+POPA
+ENDM SCENE2_PLAYER_WATCHES	
+;-------------------------------------------------------------------; 

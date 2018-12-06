@@ -9,12 +9,17 @@ INCLUDE NADER.INC
 ;---------------- ATTACK -----------------------------------
 SELECT_ATTACK_COLUMN_MSG                DB  84,"- Navigate through columns and press SPACE "
                                         DB  "to select the column of the attacked cell"
-FIRE_SLIDER_MSG                         DB  62,"Press SPACE to stop the slider at the row of the attacked cell"
+FIRE_SLIDER_MSG                         DB  64,"- Press SPACE to stop the slider at the row of the attacked cell"
+CELL_ALREADY_ATTACKED_MSG               DB  81,"- You attacked the cell that you already attacked before! Press ENTER to continue"
+GRID_MISSED_MSG                         DB  47,"- You missed the grid ! Press ENTER to continue"
+ON_TARGET_MSG                           DB  61,"- Your attack hit a ship ! Good job ! Press ENTER to continue"
+NOT_ON_TARGET_MSG                       DB  69,"- Your attack didn't hit a ship ! Hard Luck ! Press ENTER to continue"
 ATTACKX                                 DW ?        
 ATTACKY                                 DW ?               
 IS_EVEN                                 DB ?
 IS_ONTARGET                             DB ?
 IS_ATTACKED_BEFORE                      DB ?
+IS_ON_GRID                              DB ?
 PLAYER_ATTACKING                        DB 1
 PLAYER_ATTACKED                         DB 2
 GAME_END                                DB 0
@@ -24,6 +29,7 @@ SCORE_CONSTANT_TEXT                     DB  10,"'s score: "
 EMPTY_STRING                            DB  100,100 DUP(' ')
 ;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
 START_PLACING_SHIPS_MSG                 DB  88,"- You are going to place your ships (on the right) on the grid now, press ENTER to start"
+ALL_SHIPS_PLACED_MSG                    DB  53,"- You placed all your ships ! Press ENTER to continue"
 STATUS_TEST1                            DB  70,"- Please select the starting cell of the highlighted ship on the right"
 STATUS_TEST2                            DB  68,"- Please select the orientation of the highlighted ship on the right"
                          
@@ -71,7 +77,7 @@ GRID_CORNER1_X                  EQU 20
 GRID_CORNER1_Y                  EQU 19
 GRID_CORNER2_X                  EQU 460
 GRID_CORNER2_Y                  EQU 459
-GRID_CELLS_MAX_COORDINATE_MAX   EQU 19 
+GRID_CELLS_MAX_COORDINATE_MIN   EQU 9 
 GRID_CELLS_MAX_COORDINATE       DW  ?
 
 ;---------------- COLUMN SELECTOR -------------------------- DONE
@@ -116,7 +122,7 @@ SLIDER_MAX_DOWN     EQU 473
 SPACE_SCANCODE      EQU 39H
 F2_SCANCODE         EQU 3CH
 EXIT_SCANCODE       EQU 01H
-ENTER_SCANCODE       EQU 1CH
+ENTER_SCANCODE      EQU 1CH
 UP_SCANCODE         EQU 48H
 DOWN_SCANCODE       EQU 50H
 RIGHT_SCANCODE      EQU 4DH
@@ -193,19 +199,15 @@ STARTING_POINT:
 
         ;MAIN_MENU
         GET_LEVEL
-        CLEAR_GAME_SCREEN WHITE
-        DRAW_GRID
         DRAW_STATUS_BAR_TEMPLATE 
         PRINT_PLAYER1_SCORE
         PRINT_PLAYER2_SCORE
-        DRAW_SLIDER_BAR
         PLACE_SHIPS_ON_GRID 1
+        ; PLACE_SHIPS_ON_GRID 2
         START_THE_GAME
-    
-        
-   THE_END:   
-
-    
+            
+THE_END:   
+  
 HLT
 RET
 MAIN    ENDP
@@ -214,9 +216,28 @@ MAIN    ENDP
 ;--------- YOUSRY PROCEDURES ---------;
 ;-------------------------------------;
 
+IS_CELL_ON_GRID_   PROC    NEAR
+    CMP ATTACKY, 0
+    JL NOT_ON_GRID
+    MOV AX, GRID_CELLS_MAX_COORDINATE
+    CMP ATTACKY, AX
+    JA NOT_ON_GRID
+    MOV IS_ON_GRID, 1
+    JMP DETERMINED
+    
+    NOT_ON_GRID:
+    MOV IS_ON_GRID, 0
+    DETERMINED:
+    RET
+
+IS_CELL_ON_GRID_   ENDP
+;-------------------------------------;
+
 PLACE_SHIPS_ON_GRID_     PROC    NEAR
     ; PARAMETERS
     ; AL = PLAYER NUMBER (1 OR 2)
+    CLEAR_GAME_SCREEN WHITE
+    DRAW_GRID
     DRAW_SELECTION_SHIPS AL
     MOV CX, 0
     CMP AL, 1
@@ -289,9 +310,18 @@ PLACE_SHIPS_ON_GRID_     PROC    NEAR
         INC CX
         CMP CX, N_SHIPS
     JNZ PLACE_SHIP
-    RET
+    POP AX
     
-PLACE_SHIPS_ON_GRID_     ENDP  
+    PRINT_NOTIFICATION_MESSAGE  ALL_SHIPS_PLACED_MSG, 1
+    WAIT_FOR_ENTER_TO_FINISH_PLACING_SHIPS:
+        MOV AH, 0
+        INT 16H
+        CMP AH, ENTER_SCANCODE
+        JNZ WAIT_FOR_ENTER_TO_FINISH_PLACING_SHIPS
+     
+    RET
+PLACE_SHIPS_ON_GRID_     ENDP 
+ 
 ;-------------------------------------;
 
 ORDER_CELL_SELECTOR_POINTS_   PROC    NEAR
@@ -408,11 +438,15 @@ SET_LEVEL_SETTINGS_  PROC   NEAR
     MUL BL
     MOV GRID_MAX_COORDINATE, AX
     ; GRID CELLS MAX COORDINATE
-    MOV AX, GRID_CELLS_MAX_COORDINATE_MAX
-    DIV BL
+    MOV AX, GRID_CELLS_MAX_COORDINATE_MIN
+    MUL BL
     MOV AH, 0
     MOV GRID_CELLS_MAX_COORDINATE, AX
+    CMP BL, 2
+    JNZ COLUMN_SELECTOR_MIN_AND_MAX
+    INC GRID_CELLS_MAX_COORDINATE
     ; COLUMN SELECTOR MIN AND MAX
+    COLUMN_SELECTOR_MIN_AND_MAX:
     MOV AX, GRID_SQUARE_SIZE
     MOV BL, 2
     DIV BL
@@ -752,7 +786,7 @@ DRAW_X_SIGN_   PROC    NEAR
          INT 10H
          INC CX
          
-         CALL EVENORODD                   ;AT EVEN ITERATIONS I DRAW \ SO INC CX
+         EVENORODD  BX                   ;AT EVEN ITERATIONS I DRAW \ SO INC CX
          CMP IS_EVEN,0                    ;AT ODD ITERATIONS I DRAW / SO DEC CX
          JNE IF_ODD
          IF_EVEN: 
@@ -934,22 +968,25 @@ GET_CELL_FROM_PLAYER_  PROC NEAR
          MOV [SI] , AX
          MOV BX , ATTACKY
          MOV [DI] , BX
-
+         RET
 GET_CELL_FROM_PLAYER_   ENDP
-;-------------------------------------; 
-EVENORODD  PROC NEAR
-
-    PUSHA
+;-------------------------------------;
+ 
+EVENORODD_  PROC NEAR
+    ; PARAMETERS
+    ; BX = NUMBER
     MOV AX,BX
     MOV DL,2
     DIV DL
     MOV IS_EVEN,AH
-    POPA
-    RET
-                  
-EVENORODD   ENDP
+    RET                  
+EVENORODD_   ENDP
 ;-----------------------------------------;
 CHECK_CELL_AND_UPDATE_ATTACKS_DATA_  PROC NEAR
+
+    IS_CELL_ON_GRID
+    CMP IS_ON_GRID, 0
+    JZ DATA_UPDATED
    
     IS_CELL_ATTACKED_BEFORE PLAYER_ATTACKING
      CELL_HAS_SHIP ATTACKX , ATTACKY ,PLAYER_ATTACKED
@@ -1018,13 +1055,14 @@ CHECK_CELL_AND_UPDATE_ATTACKS_DATA_  PROC NEAR
             MOV [BX] , CX
             MOV CX ,ATTACKY 
             MOV [BX + 2] ,CX  
+            JMP DATA_UPDATED
             
-            DATA_UPDATED:
-                RET
+    DATA_UPDATED:
+    RET
                   
 CHECK_CELL_AND_UPDATE_ATTACKS_DATA_   ENDP
 ;-------------------------------------; 
-SCENE1_PLAYER_ATTACKS  PROC NEAR
+SCENE1_PLAYER_ATTACKS_  PROC NEAR
     
     CLEAR_GAME_SCREEN   WHITE
     DRAW_GRID   
@@ -1032,9 +1070,9 @@ SCENE1_PLAYER_ATTACKS  PROC NEAR
     DRAW_ALL_X_SIGNS PLAYER_ATTACKING
     RET
                 
-SCENE1_PLAYER_ATTACKS   ENDP
+SCENE1_PLAYER_ATTACKS_   ENDP
 ;-----------------------------------------;
-SCENE2_PLAYER_WATCHES  PROC NEAR
+SCENE2_PLAYER_WATCHES_  PROC NEAR
     
     CLEAR_GAME_SCREEN   WHITE
     DRAW_GRID
@@ -1043,7 +1081,7 @@ SCENE2_PLAYER_WATCHES  PROC NEAR
     DRAW_ALL_X_SIGNS PLAYER_ATTACKING
     RET
     
-SCENE2_PLAYER_WATCHES   ENDP
+SCENE2_PLAYER_WATCHES_   ENDP
 ;-----------------------------------------;
 IS_IT_THE_END_  PROC NEAR
     
@@ -1072,24 +1110,67 @@ REFRESH_DATA_  PROC NEAR
     MOV PLAYER_ATTACKING ,1
     MOV PLAYER_ATTACKING ,2
     MOV GAME_END,0
+    
+    MOV CX, 0
+    MOV SI, P1_SHIPS_POINTS
+    MOV DI, P2_SHIPS_POINTS
+    RESET_SHIPS_POSITIONS:
+        MOV WORD PTR [SI], -2
+        MOV WORD PTR [DI], -2
+        ADD SI, 2
+        ADD DI, 2
+        CMP CX, N_SHIPS * 4
+    JNZ RESET_SHIPS_POSITIONS
     RET 
     
 REFRESH_DATA_   ENDP
-START_THE_GAME_  PROC NEAR
-MAIN_LOOP:   
+;-----------------------------------------;
+PRINT_ATTACK_MSG_    PROC    NEAR
+    CMP IS_ON_GRID, 0
+    JZ ATTACK_OUTSIDE_GRID
     
-    CALL SCENE1_PLAYER_ATTACKS
-    GET_CELL_FROM_PLAYER ATTACKX,ATTACKY
-    CHECK_CELL_AND_UPDATE_ATTACKS_DATA
+    CMP IS_ATTACKED_BEFORE, 1
+    JZ ATTACK_NO_EFFECT
     
-    PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 1
+    CMP IS_ONTARGET, 1
+    JZ ATTACK_ON_TARGET
+    
+    PRINT_NOTIFICATION_MESSAGE  NOT_ON_TARGET_MSG, 1
+    JMP WAIT_FOR_ENTER_GO_ON
+    
+    ATTACK_OUTSIDE_GRID:
+    PRINT_NOTIFICATION_MESSAGE  GRID_MISSED_MSG, 1
+    JMP WAIT_FOR_ENTER_GO_ON
+    
+    ATTACK_NO_EFFECT:
+    PRINT_NOTIFICATION_MESSAGE  CELL_ALREADY_ATTACKED_MSG, 1
+    JMP WAIT_FOR_ENTER_GO_ON
+    
+    ATTACK_ON_TARGET:
+    PRINT_NOTIFICATION_MESSAGE  ON_TARGET_MSG, 1
+    
+    WAIT_FOR_ENTER_GO_ON:
     NOT_ENTER:
     MOV AH,0                      ;WAIT FOR THE USER TO CLICK ENTER
     INT 16H
     CMP AH,ENTER_SCANCODE
     JNZ NOT_ENTER
+    
+    RET
 
-    CALL SCENE2_PLAYER_WATCHES
+PRINT_ATTACK_MSG_    ENDP
+
+;-----------------------------------------;
+
+START_THE_GAME_  PROC NEAR
+MAIN_LOOP:
+    SCENE1_PLAYER_ATTACKS
+    GET_CELL_FROM_PLAYER ATTACKX,ATTACKY
+    CHECK_CELL_AND_UPDATE_ATTACKS_DATA
+    
+    PRINT_ATTACK_MSG
+
+    SCENE2_PLAYER_WATCHES
     
     PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 1
     NOT_ENTER2:
