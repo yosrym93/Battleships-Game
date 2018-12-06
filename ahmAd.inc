@@ -47,14 +47,95 @@ GET_LEVEL MACRO
       POPA
 ENDM GETLEVEL
 ;-------------------------------------------------------------------; 
-CELL_HAS_SHIP MACRO GRIDX_ ,GRIDY_ ,PLAYER_WHO_IS_ATTACKED
+PIXELS_TO_GRID MACRO  PixelX, PixelY, GridX, GridY 
+      PUSHA
+      Mov CX, PixelX
+      Mov BX, PixelY
+      Mov SI, offset GridX
+      Mov DI, offset GridY
+      CALL PIXELS_TO_GRID_
+      POPA
+ENDM PIXELS_TO_GRID
+;-------------------------------------------------------------------; 
+Draw_All_Ships_ON_GRID MACRO PLAYER_NUMBER
+PUSHA
+MOV AL, PLAYER_NUMBER
+CALL Draw_All_Ships_ON_GRID_
+POPA
+ENDM Draw_All_Ships_ON_GRID
+;-------------------------------------------------------------------; 
+Draw_X_Sign MACRO GRIDX_ ,GRIDY_ ,Color
 PUSHA
 MOV AX, GRIDX_
 MOV GRID1_X, AX
 MOV AX, GRIDY_
 MOV GRID1_Y, AX
-Mov Al,PLAYER_WHO_IS_ATTACKED
-CALL CELL_HAS_SHIP_
+Mov Al,Color
+Mov Variable_Color, Al
+CALL Draw_X_Sign_
 POPA
-ENDM CELL_HAS_SHIP
+ENDM Draw_X_Sign
 ;-------------------------------------------------------------------; 
+Draw_All_X_Signs MACRO PLAYER_NUMBER
+PUSHA
+Mov AL, PLAYER_NUMBER
+CALL  Draw_All_X_Signs_
+POPA
+ENDM Draw_All_X_Signs
+;-------------------------------------------------------------------; 
+ CELL_HAS_SHIP MACRO GRIDX_ ,GRIDY_ ,ATTACKED_PLAYER
+PUSHA
+MOV AX, GRIDX_
+MOV GRID1_X, AX
+MOV AX, GRIDY_
+MOV GRID1_Y, AX
+Mov Al,ATTACKED_PLAYER
+CALL  CELL_HAS_SHIP_
+POPA
+ENDM  CELL_HAS_SHIP
+;-------------------------------------------------------------------; 
+Is_Cell_Attacked_Before MACRO PLAYER_WHO_ATTACKS
+PUSHA
+Mov Al,PLAYER_WHO_ATTACKS
+CALL Is_CELL_Attacked_Before_
+POPA
+ENDM Is_CELL_Attacked_Before
+;-------------------------------------------------------------------; 
+Update_ATTACKS_DATA MACRO 
+PUSHA
+CALL Update_ATTACKS_DATA_
+POPA
+ENDM Update_ATTACKS_DATA
+;-------------------------------------------------------------------; 
+CHECK_CELL_AND_Update_ATTACKS_DATA MACRO 
+PUSHA
+CALL CHECK_CELL_AND_Update_ATTACKS_DATA_
+POPA
+ENDM CHECK_CELL_AND_Update_ATTACKS_DATA
+;-------------------------------------------------------------------; 
+Get_CELL_FROM_PLAYER MACRO GRIDX_,GRIDY_
+PUSHA
+Mov SI, offset GRIDX_
+MOV DI,offset GRIDY_
+CALL Get_CELL_FROM_PLAYER_
+POPA
+ENDM Get_CELL_FROM_PLAYER
+;-------------------------------------------------------------------; 
+IS_IT_THE_END MACRO
+PUSHA
+CALL IS_IT_THE_END_
+POPA
+ENDM IS_IT_THE_END
+;-------------------------------------------------------------------; 
+REFRESH_DATA MACRO
+PUSHA
+CALL REFRESH_DATA_
+POPA
+ENDM REFRESH_DATA
+;-------------------------------------------------------------------; 
+START_THE_GAME MACRO
+PUSHA
+CALL START_THE_GAME_
+POPA
+ENDM START_THE_GAME
+
