@@ -3,12 +3,44 @@ include ahmad.inc
 include nader.inc
 .model large
 .386
+.STACK 64
+.DATA
 
-.stack 64
-.data
+;---------------- ATTACK -----------------------------------
+SELECT_ATTACK_COLUMN_MSG                DB  84,"- Navigate through columns and press space "
+                                        DB  "to select the column of the attacked cell"
+FIRE_SLIDER_MSG                         DB  62,"Press SPACE to stop the slider at the row of the attacked cell"
 
 
-
+;---------------- STATUS BAR - ------------------------; 
+SCORE_CONSTANT_TEXT                     DB  10,"'s Score: "
+EMPTY_STRING                            DB  100,100 DUP(' ')
+;----------------------- Nader (EXPERIMENTAL) - ------------------------; 
+STATUS_TEST1                            DB  46,"- Please select the starting cell of your ship"
+STATUS_TEST2                            DB  44,"- Please select the orientation of your ship"
+Is_OnTarget                             DB    ?
+;---------------- CELLS SELECTOR------------------------; 
+SELECTOR_X1                             DW  20
+SELECTOR_Y1                             DW  19
+SELECTOR_X2                             DW  20
+SELECTOR_Y2                             DW  19
+SELECTOR_GRID_X1                        DW  0
+SELECTOR_GRID_Y1                        DW  0
+SELECTOR_GRID_X2                        DW  ?
+SELECTOR_GRID_Y2                        DW  ?
+UP_ORIENTATION                          DB  ?   ;ORIENTATION = 0 : INVALID
+DOWN_ORIENTATION                        DB  ?   ;            = 1 : VALID
+LEFT_ORIENTATION                        DB  ?
+RIGHT_ORIENTATION                       DB  ?
+;---------------- COORDINATES TRANSFER PARAMETERS ----------
+GRID1_X            DW  ?
+GRID2_X            DW  ?
+GRID1_Y            DW  ?
+GRID2_Y            DW  ?
+PIXELS1_X          DW  ?
+PIXELS2_X          DW  ?
+PIXELS1_Y          DW  ?
+PIXELS2_Y          DW  ?
 ;---------------- attack -----------------------------------  Done
 select_attack_column_msg                db  84,"- Navigate through columns and press space "
                                         db  "to select the column of the attacked cell"
@@ -42,16 +74,17 @@ pixels2_y          dw  ?
 game_screen_max_x   equ 799
 game_screen_max_y   equ 479
  
-;---------------- grid  ------------------------------------
-grid_size_max            equ 400    
-grid_square_size_max     equ 44
-grid_square_size         dw  ?      ;44 or 22
-grid_max_coordinate_min  equ 16     
-grid_max_coordinate      dw  ?       
-grid_corner1_x           equ 20
-grid_corner1_y           equ 19
-grid_corner2_x           equ 460
-grid_corner2_y           equ 459
+;---------------- GRID  ------------------------------------
+GRID_SIZE_MAX               EQU 400
+GRID_SQUARE_SIZE_MAX        EQU 44
+GRID_SQUARE_SIZE            DW  ?
+GRID_MAX_COORDINATE_MIN     EQU 16
+GRID_MAX_COORDINATE         DW  ?
+GRID_CORNER1_X              EQU 20
+GRID_CORNER1_Y              EQU 19
+GRID_CORNER2_X              EQU 460
+GRID_CORNER2_Y              EQU 459
+GRID_CELLS_MAX_COORDINATE   EQU 9 ;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!SHOULD BE IMPLEMENTED AS A WORD NOT A BYTE (YOSRY)!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ;---------------- column selector -------------------------- Done
 column_selector_row                 equ grid_corner2_y+2
@@ -59,6 +92,28 @@ column_selector_current_column      dw  ?
 column_selector_min_column          dw  ?
 column_selector_max_column          dw  ?
 
+;---------------- COLORS ----------------------------------------
+BLACK               DB  00H
+BLUE                DB  01H
+GREEN               DB  02H
+CYAN                DB  03H
+RED                 DB  04H
+MAGENTA             DB  05H
+BROWN               DB  06H
+LIGHT_GRAY          DB  07H
+DARK_GRAY           DB  08H
+LIGHT_BLUE          DB  09H
+LIGHT_GREEN         DB  0AH
+LIGHT_CYAN          DB  0BH
+LIGHT_RED           DB  0CH
+LIGHT_MAGENTA       DB  0DH
+YELLOW              DB  0EH
+WHITE               DB  0FH
+;---------------- DRAW RECTANGLE PARAMETERS ----------------------
+X1                  DW  ?
+X2                  DW  ?
+Y1                  DW  ?
+Y2                  DW  ?
 ;---------------- colors ---------------------------------------- Done
 Variable_Color      db  ?
 black               db  00h
@@ -125,7 +180,23 @@ P1_Attacks_OnTarget_Num     dw  0
 P1_Attacks_OnTarget         dw  (grid_size_max * 2) dup('*')
 P1_Attacks_Missed_Num       dw  0
 p1_Attacks_missed           dw  (grid_size_max * 2) dup('*') 
+;---------------- PLAYER 1 DATA ----------------------------------
+P1_USERNAME         DB  20, ?, 20 DUP ('?')
+P1_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+P1_SCORE_STRING                         DB  2 DUP(?)
+;-------- P1 ATTACKS ---------------------------------------------
+;GRID CELLS THAT P1 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
+P1_ATTACKS_ONTARGET DB  (GRID_SIZE_MAX * 2) DUP(?)
+P1_ATTACH_MISSED    DB  (GRID_SIZE_MAX * 2) DUP(?)            
 
+;-------- P1 SHIPS DATA ------------------------------------------
+P1_SHIPS LABEL BYTE
+P1_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(?)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
+                                                         ; POINT2_X, POINT2_Y
+P1_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
+P1_SHIPS_REMAINING_CELLS    DB  N_SHIPS DUP(?)            ; NUMBER OF REMAINING CELLS FOR EACH SHIP
+P1_SHIPS_IS_VERTICAL        DB  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
+P1_SHIPS_IS_DRAWN           DW  N_SHIPS DUP(0)            ; IS THE SHIP DRAWN ON THE GRID YET? (0: NO, 1: YES)   
 
 ;-------- p1 ships data ------------------------------------------ Done
 p1_ships label byte
@@ -136,8 +207,14 @@ p1_ships_sizes              dw  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
 p1_ships_remaining_cells    db  n_ships dup(?)            ; number of remaining cells for each ship
 p1_ships_is_vertical        db  n_ships dup(1)            ; is the ship vertical? (0: horizontal, 1:vertical)
 
-p1_ships_is_drawn           dw  n_ships dup(0)            ; is the ship drawn on the grid yet? (0: no, 1: yes)   
-
+;---------------- PLAYER 2 DATA ----------------------------------
+P2_USERNAME         DB  20, ?, 20 DUP ('?')
+P2_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+P2_SCORE_STRING                         DB  2 DUP(?)
+;-------- P2 ATTACKS ---------------------------------------------
+;GRID CELLS THAT P2 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
+P2_ATTACKS_ONTARGET DB  (GRID_SIZE_MAX * 2) DUP(?)
+P2_ATTACH_MISSED    DB  (GRID_SIZE_MAX * 2) DUP(?)  
 
 ;---------------- player 2 data ---------------------------------- 
 p2_username         db  20, ?, 20 dup ('?')
@@ -265,34 +342,63 @@ get_attack_column_  proc    near
 get_attack_column_  endp        
 ;-------------------------------------;
 
-set_level_settings_  proc   near
-    ; parameters al: 1 or 2 (level)
-    ; grid square size
-    mov bl, al
-    mov ax, grid_square_size_max
-    div bl
-    mov ah, 0
-    mov grid_square_size, ax
-    
-    ; grid max coordinate
-    mov ax, grid_max_coordinate_min
-    mul bl
-    mov grid_max_coordinate, ax
-    
-    ; column selector min and max
-    mov ax, grid_square_size
-    mov bl, 2
-    div bl
-    mov cl, al
-    mov ch, 0
-    add cx, grid_corner1_x
-    mov column_selector_min_column, cx
-    mov ah, 0
-    mov cx, grid_corner2_x
-    sub cx, ax
-    mov column_selector_max_column, cx
-    ret
-set_level_settings_ endp
+SET_LEVEL_SETTINGS_  PROC   NEAR
+    ; PARAMETERS AL: 1 OR 2 (LEVEL)
+    ; GRID SQUARE SIZE
+    MOV BL, AL
+    MOV AX, GRID_SQUARE_SIZE_MAX
+    DIV BL
+    MOV AH, 0
+    MOV GRID_SQUARE_SIZE, AX
+    ; GRID MAX COORDINATE
+    MOV AX, GRID_MAX_COORDINATE_MIN
+    MUL BL
+    MOV GRID_MAX_COORDINATE, AX
+    ; COLUMN SELECTOR MIN AND MAX
+    MOV AX, GRID_SQUARE_SIZE
+    MOV BL, 2
+    DIV BL
+    MOV CL, AL
+    MOV CH, 0
+    ADD CX, GRID_CORNER1_X
+    MOV COLUMN_SELECTOR_MIN_COLUMN, CX
+    MOV AH, 0
+    MOV CX, GRID_CORNER2_X
+    SUB CX, AX
+    MOV COLUMN_SELECTOR_MAX_COLUMN, CX
+    RET
+SET_LEVEL_SETTINGS_ ENDP
+;-------------------------------------;
+DRAW_SELECTION_SHIPS_   PROC    NEAR
+    ; PARAMETERS AL: 1 OR 2 (PLAYER)
+    MOV CX, 0
+    CMP AL, 1
+    JNZ PLAYER2_SELECTION_SHIPS
+    MOV DI, OFFSET P1_SHIPS_SIZES
+    MOV SI, OFFSET P1_SHIPS_IS_DRAWN
+    JMP DRAW_ALL_SELECTION_SHIPS
+    PLAYER2_SELECTION_SHIPS:
+    MOV DI, OFFSET P2_SHIPS_SIZES
+    MOV SI, OFFSET P2_SHIPS_IS_DRAWN
+    DRAW_ALL_SELECTION_SHIPS:
+        CMP WORD PTR [SI], 1
+        JZ DRAW_NEXT_SELECTION_SHIP
+        MOV AX, GRID_MAX_COORDINATE
+        SUB AX, [DI]
+        MOV GRID1_X, AX
+        MOV BX, GRID_MAX_COORDINATE
+        MOV GRID2_X, BX
+        MOV GRID1_Y, CX
+        MOV GRID2_Y, CX
+        DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y
+        DRAW_NEXT_SELECTION_SHIP:
+        ADD DI, 2
+        ADD SI, 2
+        INC CX
+        CMP CX, N_SHIPS
+    JNZ DRAW_ALL_SELECTION_SHIPS
+    RET
+DRAW_SELECTION_SHIPS_   ENDP
 ;-------------------------------------;
 
 draw_selection_ships_   proc    near
@@ -1248,14 +1354,360 @@ print_player2_score_   proc    near
     mov bx,000fh
     int 10h
  
-    ret
-print_player2_score_   endp
-;-----------------------------------------;
-clear_game_screen_  proc    near
-    ; parameters
-    ; al = color   
-    draw_rectangle  0, 0, game_screen_max_x, game_screen_max_y, al  
-    ret
-clear_game_screen_  endp
+    RET
+PRINT_PLAYER2_SCORE_   ENDP
+;-------------------------------------;
+CELLS_SELECTOR_   PROC    NEAR 
+    ;PARAMETERS:
+   ;CX: SHIP SIZE 
+   ;RETURNS: 2 points in grid coordinates that the player chose (SELECTOR_GRID 1 and 2) , they are NOT necessarily in the right format
+    DEC CX
+    MOV DX,GRID_SQUARE_SIZE
+    ADD SELECTOR_X2,DX
+    ADD SELECTOR_Y2,DX
+    MOV AX, 10
+    DIV LEVEL   ; MARGIN = 10 / LEVEL 
+    ADD SELECTOR_X1, AX
+    ADD SELECTOR_Y1, AX
+    SUB SELECTOR_X2, AX
+    SUB SELECTOR_Y2, AX
+    
+    PRINT_NOTIFICATION_MESSAGE STATUS_TEST1,1
+WAIT_FOR_DIRECTION_KEY:
+    DRAW_RECTANGLE SELECTOR_X1,SELECTOR_Y1,SELECTOR_X2,SELECTOR_Y2,RED
+    MOV AH,0
+    INT 16H
+    CMP AH,ENTER_SCANCODE ;Checks if the user has already chosen the first cell of the selected ship
+    JE SELECTOR_SECOND_POINT
+    ;After getting DIRECTION key, remove the old selector icon, to draw the new one
+    DRAW_RECTANGLE SELECTOR_X1,SELECTOR_Y1,SELECTOR_X2,SELECTOR_Y2,WHITE
+    CMP AH,UP_SCANCODE 
+    JE SELECTOR_UP
+    CMP AH,DOWN_SCANCODE
+    JE SELECTOR_DOWN
+    CMP AH,LEFT_SCANCODE 
+    JE SELECTOR_LEFT
+    CMP AH,RIGHT_SCANCODE 
+    JE SELECTOR_RIGHT
+    
+SELECTOR_UP:
+    CMP SELECTOR_GRID_Y1,0    ;Boundaries check
+    JE WAIT_FOR_DIRECTION_KEY
+    DEC SELECTOR_GRID_Y1
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;checks whether the cell has a ship placed on it or not
+    CMP Is_OnTarget,0
+    JE  SELECTOR_UP_CONTINUE
+    INC SELECTOR_GRID_Y1            ;if there is a ship, reset selector grid coordinates to thier previous values
+    JMP WAIT_FOR_DIRECTION_KEY
+    SELECTOR_UP_CONTINUE:
+    SUB SELECTOR_Y1,DX
+    SUB SELECTOR_Y2,DX
+    JMP WAIT_FOR_DIRECTION_KEY 
+SELECTOR_DOWN:
+    CMP SELECTOR_GRID_Y1,GRID_CELLS_MAX_COORDINATE    ;Boundaries check
+    JE  WAIT_FOR_DIRECTION_KEY
+    INC SELECTOR_GRID_Y1
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;checks whether the cell has a ship placed on it or not
+    CMP Is_OnTarget,0
+    JE  SELECTOR_DOWN_CONTINUE
+    DEC SELECTOR_GRID_Y1            ;if there is a ship, reset selector grid coordinates to thier previous values
+    JMP WAIT_FOR_DIRECTION_KEY
+    SELECTOR_DOWN_CONTINUE:
+    ADD SELECTOR_Y1,DX
+    ADD SELECTOR_Y2,DX
+    JMP WAIT_FOR_DIRECTION_KEY   
+SELECTOR_LEFT:
+    CMP SELECTOR_GRID_X1,0    ;Boundaries check
+    JE  WAIT_FOR_DIRECTION_KEY
+    DEC SELECTOR_GRID_X1
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;checks whether the cell has a ship placed on it or not(FOR PLAYER 1!!!!!)
+    CMP Is_OnTarget,0
+    JE  SELECTOR_LEFT_CONTINUE
+    INC SELECTOR_GRID_X1            ;if there is a ship, reset selector grid coordinates to thier previous values
+    JMP WAIT_FOR_DIRECTION_KEY
+    SELECTOR_LEFT_CONTINUE:
+    SUB SELECTOR_X1,DX
+    SUB SELECTOR_X2,DX
+    JMP WAIT_FOR_DIRECTION_KEY 
+SELECTOR_RIGHT:
+    CMP SELECTOR_GRID_X1,GRID_CELLS_MAX_COORDINATE    ;Boundaries check
+    JE  WAIT_FOR_DIRECTION_KEY
+    INC SELECTOR_GRID_X1 
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,1  ;checks whether the cell has a ship placed on it or not
+    CMP Is_OnTarget,0
+    JE  SELECTOR_RIGHT_CONTINUE
+    DEC SELECTOR_GRID_X1            ;if there is a ship, reset selector grid coordinates to thier previous values
+    JMP WAIT_FOR_DIRECTION_KEY
+    SELECTOR_RIGHT_CONTINUE:   
+    ADD SELECTOR_X1,DX
+    ADD SELECTOR_X2,DX
+    JMP WAIT_FOR_DIRECTION_KEY
+    
+SELECTOR_SECOND_POINT:
+    PRINT_NOTIFICATION_MESSAGE STATUS_TEST2,1
+UP_ORIENTATION_CHECK:
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX    ;COPY POINT 1 TO POINT 2
+    MOV DX,CX                  ;COPY SIZE TO DX
+    CMP SELECTOR_GRID_Y1,CX
+    JAE UP_ORIENTATION_SHIP_CHECK   
+    MOV UP_ORIENTATION,0
+    JMP DOWN_ORIENTATION_CHECK 
+    UP_ORIENTATION_SHIP_CHECK:     ;checks whether the up-region has ships placed in its direction 
+        DEC SELECTOR_GRID_Y2       ;Traverse on the y-axis upwards
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,1
+        CMP Is_OnTarget,0
+        JNE UP_ORIENTATION_INVALID
+        LOOP UP_ORIENTATION_SHIP_CHECK
+        MOV UP_ORIENTATION,1            ;ORIENTATION IS VALID
+        ;HIGHLIGHT ORIENTATION REGION
+        MOV AX,SELECTOR_X1
+        MOV PIXELS1_X,AX
+        MOV AX,SELECTOR_Y1
+        MOV PIXELS1_Y,AX
+        MOV AX,SELECTOR_X2
+        MOV PIXELS2_X,AX
+        MOV AX,SELECTOR_Y2  
+        MOV PIXELS2_Y,AX   ;STORE SELECTOR PIXELS COORDINATES
+        MOV AX,GRID_SQUARE_SIZE
+        MOV CX,DX          ;SET COUNTER
+        UP_HIGHLIGHT:
+        SUB PIXELS1_Y,AX
+        SUB PIXELS2_Y,AX
+        DRAW_RECTANGLE PIXELS1_X,PIXELS1_Y,PIXELS2_X,PIXELS2_Y,YELLOW
+        LOOP UP_HIGHLIGHT
+        
+        JMP DOWN_ORIENTATION_CHECK
+        UP_ORIENTATION_INVALID:
+           MOV UP_ORIENTATION,0 
+           
+DOWN_ORIENTATION_CHECK:
+    MOV CX,DX                  ;RETURN CX TO ITS ORIGINAL VALUE
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX    ;RETURN POINT 2 TO ITS INTIAL VALUE
+    
+    MOV SI,GRID_CELLS_MAX_COORDINATE
+    SUB SI,SELECTOR_GRID_Y1
+    CMP SI,CX
+    JAE DOWN_ORIENTATION_SHIP_CHECK   
+    MOV DOWN_ORIENTATION,0
+    JMP LEFT_ORIENTATION_CHECK 
+    DOWN_ORIENTATION_SHIP_CHECK:     ;checks whether the DOWN-region has ships placed in its direction 
+        INC SELECTOR_GRID_Y2       ;Traverse on the y-axis DOWNWARDS
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,1
+        CMP Is_OnTarget,0
+        JNE DOWN_ORIENTATION_INVALID
+        LOOP DOWN_ORIENTATION_SHIP_CHECK
+        MOV DOWN_ORIENTATION,1            ;ORIENTATION IS VALID
+        ;HIGHLIGHT ORIENTATION REGION
+        MOV AX,SELECTOR_X1
+        MOV PIXELS1_X,AX
+        MOV AX,SELECTOR_Y1
+        MOV PIXELS1_Y,AX
+        MOV AX,SELECTOR_X2
+        MOV PIXELS2_X,AX
+        MOV AX,SELECTOR_Y2  
+        MOV PIXELS2_Y,AX   ;STORE SELECTOR PIXELS COORDINATES
+        MOV AX,GRID_SQUARE_SIZE
+        MOV CX,DX          ;SET COUNTER
+        DOWN_HIGHLIGHT:
+        ADD PIXELS1_Y,AX
+        ADD PIXELS2_Y,AX
+        DRAW_RECTANGLE PIXELS1_X,PIXELS1_Y,PIXELS2_X,PIXELS2_Y,YELLOW
+        LOOP DOWN_HIGHLIGHT
+        
+        JMP LEFT_ORIENTATION_CHECK
+        DOWN_ORIENTATION_INVALID:
+        MOV DOWN_ORIENTATION,0 
+                          
+LEFT_ORIENTATION_CHECK:
+    MOV CX,DX                  ;RETURN CX TO ITS ORIGINAL VALUE
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX    ;RETURN POINT 2 TO ITS INTIAL VALUE
+    
+    CMP SELECTOR_GRID_X1,CX
+    JAE LEFT_ORIENTATION_SHIP_CHECK   
+    MOV LEFT_ORIENTATION,0
+    JMP RIGHT_ORIENTATION_CHECK 
+    LEFT_ORIENTATION_SHIP_CHECK:     ;checks whether the LEFT-region has ships placed in its direction 
+        DEC SELECTOR_GRID_X2       ;Traverse on the X-axis in the left direction
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,1
+        CMP Is_OnTarget,0
+        JNE LEFT_ORIENTATION_INVALID
+        LOOP LEFT_ORIENTATION_SHIP_CHECK
+        MOV LEFT_ORIENTATION,1            ;ORIENTATION IS VALID
+        ;HIGHLIGHT ORIENTATION REGION
+        MOV AX,SELECTOR_X1
+        MOV PIXELS1_X,AX
+        MOV AX,SELECTOR_Y1
+        MOV PIXELS1_Y,AX
+        MOV AX,SELECTOR_X2
+        MOV PIXELS2_X,AX
+        MOV AX,SELECTOR_Y2  
+        MOV PIXELS2_Y,AX   ;STORE SELECTOR PIXELS COORDINATES
+        MOV AX,GRID_SQUARE_SIZE
+        MOV CX,DX          ;SET COUNTER
+        LEFT_HIGHLIGHT:
+        SUB PIXELS1_X,AX
+        SUB PIXELS2_X,AX
+        DRAW_RECTANGLE PIXELS1_X,PIXELS1_Y,PIXELS2_X,PIXELS2_Y,YELLOW
+        LOOP LEFT_HIGHLIGHT
+        
+        JMP RIGHT_ORIENTATION_CHECK
+        LEFT_ORIENTATION_INVALID:
+        MOV LEFT_ORIENTATION,0
+RIGHT_ORIENTATION_CHECK:
+    MOV CX,DX                  ;RETURN CX TO ITS ORIGINAL VALUE
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX    ;RETURN POINT 2 TO ITS INTIAL VALUE
+    
+    MOV SI,GRID_CELLS_MAX_COORDINATE
+    SUB SI,SELECTOR_GRID_X1
+    CMP SI,CX
+    JAE RIGHT_ORIENTATION_SHIP_CHECK   
+    MOV RIGHT_ORIENTATION,0
+    JMP GET_SECOND_POINT 
+    RIGHT_ORIENTATION_SHIP_CHECK:     ;checks whether the RIGHT-region has ships placed in its direction 
+        INC SELECTOR_GRID_X2       ;Traverse on the X-axis in the RIGHT direction
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,1
+        CMP Is_OnTarget,0
+        JNE RIGHT_ORIENTATION_INVALID
+        LOOP RIGHT_ORIENTATION_SHIP_CHECK
+        MOV RIGHT_ORIENTATION,1            ;ORIENTATION IS VALID
+        ;HIGHLIGHT ORIENTATION REGION
+        MOV AX,SELECTOR_X1
+        MOV PIXELS1_X,AX
+        MOV AX,SELECTOR_Y1
+        MOV PIXELS1_Y,AX
+        MOV AX,SELECTOR_X2
+        MOV PIXELS2_X,AX
+        MOV AX,SELECTOR_Y2  
+        MOV PIXELS2_Y,AX   ;STORE SELECTOR PIXELS COORDINATES
+        MOV AX,GRID_SQUARE_SIZE
+        MOV CX,DX          ;SET COUNTER
+        RIGHT_HIGHLIGHT:
+        ADD PIXELS1_X,AX
+        ADD PIXELS2_X,AX
+        DRAW_RECTANGLE PIXELS1_X,PIXELS1_Y,PIXELS2_X,PIXELS2_Y,YELLOW
+        LOOP RIGHT_HIGHLIGHT
+        
+        JMP GET_SECOND_POINT
+        RIGHT_ORIENTATION_INVALID:
+        MOV RIGHT_ORIENTATION,0
+        
+GET_SECOND_POINT:
+    MOV CX,DX
+    MOV AX,SELECTOR_GRID_X1
+    MOV SELECTOR_GRID_X2,AX
+    MOV AX,SELECTOR_GRID_Y1
+    MOV SELECTOR_GRID_Y2,AX
+    WAIT_ORIENTATION_SELECTION:
+        MOV AH,0
+        INT 16H
+        CMP AH,UP_SCANCODE 
+        JE UP_ORIENTATION_SELECTED
+        CMP AH,DOWN_SCANCODE
+        JE DOWN_ORIENTATION_SELECTED
+        CMP AH,LEFT_SCANCODE 
+        JE LEFT_ORIENTATION_SELECTED
+        CMP AH,RIGHT_SCANCODE 
+        JE RIGHT_ORIENTATION_SELECTED
+UP_ORIENTATION_SELECTED:   
+        CMP UP_ORIENTATION,0
+        JE  WAIT_ORIENTATION_SELECTION
+        SUB SELECTOR_GRID_Y2,CX
+        CLEAR_GRID 
+        RET   
+DOWN_ORIENTATION_SELECTED:
+        CMP DOWN_ORIENTATION,0
+        JE  WAIT_ORIENTATION_SELECTION 
+        ADD SELECTOR_GRID_Y2,CX
+        CLEAR_GRID
+        RET       
+LEFT_ORIENTATION_SELECTED: 
+        CMP LEFT_ORIENTATION,0
+        JE  WAIT_ORIENTATION_SELECTION
+        SUB SELECTOR_GRID_X2,CX
+        CLEAR_GRID
+        RET        
+RIGHT_ORIENTATION_SELECTED:
+        CMP RIGHT_ORIENTATION,0
+        JE  WAIT_ORIENTATION_SELECTION          
+        ADD SELECTOR_GRID_X2,CX
+        CLEAR_GRID
+    RET
+CELLS_SELECTOR_   ENDP
+;-------------------------------------;
+CELL_HAS_SHIP_   PROC    NEAR
+
+CMP AL, 1
+JNZ CHECK_PLAYER2_SHIPS
+MOV SI, OFFSET P1_SHIPS_POINTS
+MOV DI, OFFSET P1_SHIPS_SIZES
+MOV BX, OFFSET P1_SHIPS_IS_VERTICAL    
+JMP CHECK_ALL_SHIPS
+
+CHECK_PLAYER2_SHIPS:
+MOV SI, OFFSET P2_SHIPS_POINTS
+MOV DI, OFFSET P2_SHIPS_SIZES
+MOV BX, OFFSET P2_SHIPS_IS_VERTICAL 
+
+CHECK_ALL_SHIPS:
+
+CHECK_SHIP:              
+CMP [BX] ,1                 
+JNZ HORIZONTAL_SHIP        
+
+MOV AX,GRID1_Y
+CMP WORD PTR[SI + 2],AX                       
+JB EDIT_AND_CHECK_AGAIN
+MOV AX,GRID1_Y
+CMP WORD PTR[SI + 6],AX
+JA  EDIT_AND_CHECK_AGAIN
+MOV IS_ONTARGET,0;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SHOULD MOVE 1 INSTEAD OF 0, BUT WAITING FOR AHMAD TO FIX THIS FUNCTION!!!!!!!!!!!!!!!!!!!!!!!!
+RET
+
+
+HORIZONTAL_SHIP:  
+MOV AX,GRID1_X          
+CMP WORD PTR[SI],AX                      
+JB EDIT_AND_CHECK_AGAIN
+MOV AX,GRID1_X          
+CMP WORD PTR[SI + 4],AX
+JA  EDIT_AND_CHECK_AGAIN
+MOV IS_ONTARGET,0;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SHOULD MOVE 1 INSTEAD OF 0, BUT WAITING FOR AHMAD TO FIX THIS FUNCTION!!!!!!!!!!!!!!!!!!!!!!!!
+RET
+
+EDIT_AND_CHECK_AGAIN:
+ADD SI ,8
+INC DI
+INC BX
+CMP BX , N_SHIPS
+JNZ CHECK_SHIP
+MOV IS_ONTARGET,0
+RET
+
+CELL_HAS_SHIP_   ENDP
+;-----------------------------------------;  
+CLEAR_GRID_   PROC    NEAR 
+    DRAW_RECTANGLE  GRID_CORNER1_X,GRID_CORNER1_Y,GRID_CORNER2_X,GRID_CORNER2_Y,WHITE
+    DRAW_GRID 
+    RET
+CLEAR_GRID_   ENDP
+;-----------------------------------------;    
+CLEAR_GAME_SCREEN_  PROC    NEAR
+    ; PARAMETERS
+    ; AL = COLOR   
+    DRAW_RECTANGLE  0, 0, GAME_SCREEN_MAX_X, GAME_SCREEN_MAX_Y, AL  
+    RET
+CLEAR_GAME_SCREEN_  ENDP
 
 end     main
