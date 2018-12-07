@@ -50,12 +50,15 @@ CALL CELLS_SELECTOR_
 POPA
 ENDM			CELLS_SELECTOR
 ;------------------------------------------------------------------------;
-
 CLEAR_GRID	MACRO   
 PUSHA
 CALL CLEAR_GRID_
 POPA
 ENDM			CLEAR_GRID
 ;------------------------------------------------------------------------;
-
+CALCULATE_SELECTOR_INITIAL_POSITION      MACRO   
+PUSHA
+CALL CALCULATE_SELECTOR_INITIAL_POSITION_
+POPA
+ENDM                    CALCULATE_SELECTOR_INITIAL_POSITION
 ;------------------------------------------------------------------------;
