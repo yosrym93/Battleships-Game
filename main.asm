@@ -309,7 +309,7 @@ PLACE_SHIPS_ON_GRID_     PROC    NEAR
         
         ; NEXT SHIP
         ADD DI, 2
-        INC SI
+        ADD SI,2
         INC CX
         CMP CX, N_SHIPS
     JNZ PLACE_SHIP
@@ -903,6 +903,7 @@ DRAW_ALL_X_SIGNS_   ENDP
                 
                 EDIT_AND_CHECK_AGAIN:
                 ADD SI ,8
+                ADD DI,2
                 INC CX
                 CMP CX ,N_SHIPS
                 JNZ CHECK_SHIP
