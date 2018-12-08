@@ -75,3 +75,9 @@ CALL POSSIBLE_ORIENTATIONS_CHECKER_
 POPA
 ENDM                    POSSIBLE_ORIENTATIONS_CHECKER
 ;------------------------------------------------------------------------;
+STAT_SCREEN      MACRO   
+PUSHA
+CALL STAT_SCREEN_
+POPA
+ENDM                    STAT_SCREEN
+;------------------------------------------------------------------------;
