@@ -72,6 +72,13 @@ CALL Draw_All_Ships_ON_GRID_
 POPA
 ENDM Draw_All_Ships_ON_GRID
 ;-------------------------------------------------------------------; 
+DRAW_ALL_DESTROYED_SHIPS MACRO PLAYER_NUMBER
+PUSHA
+MOV AL, PLAYER_NUMBER
+CALL DRAW_ALL_DESTROYED_SHIPS_
+POPA
+ENDM DRAW_ALL_DESTROYED_SHIPS
+;------------------------------------------------------------------;
 Draw_X_Sign MACRO GRIDX_ ,GRIDY_ ,Color
 PUSHA
 MOV AX, GRIDX_
@@ -158,4 +165,16 @@ PUSHA
 CALL SCENE2_PLAYER_WATCHES_	
 POPA
 ENDM SCENE2_PLAYER_WATCHES	
+;-------------------------------------------------------------------; 
+ACTIVATE_ATTACK_TWICE_POWER_UP MACRO
+PUSHA
+CALL ACTIVATE_ATTACK_TWICE_POWER_UP_
+POPA
+ENDM ACTIVATE_ATTACK_TWICE_POWER_UP
+;-------------------------------------------------------------------; 
+ ACTIVATE_DESTROY_RANDOM_POWER_UP MACRO
+PUSHA
+CALL ACTIVATE_DESTROY_RANDOM_POWER_UP_ 
+POPA
+ ENDM ACTIVATE_DESTROY_RANDOM_POWER_UP
 ;-------------------------------------------------------------------; 
