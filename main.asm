@@ -32,9 +32,10 @@ TO_QUIT_GAME                            DB  28,"- To quit the game press ESC"
 ;---------------- STATUS BAR - ------------------------; 
 SCORE_CONSTANT_TEXT                     DB  10,"'s score: "
 EMPTY_STRING                            DB  100,100 DUP(' ')
+CONCATENATED_STRING                     DB  100,100 DUP(' ')
 ;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
 
-STATUS_TEST1                            DB  70,"- Please select the starting cell of the highlighted ship on the right"
+STATUS_TEST1                            DB  35," is a good person and hates oatmeal"
 STATUS_TEST2                            DB  68,"- Please select the orientation of the highlighted ship on the right"
                          
 ;---------------- CELLS SELECTOR------------------------;
@@ -246,6 +247,8 @@ MOV ES, AX
 STARTING_POINT:
         
         MAIN_MENU
+        CONCATENATE STATUS_TEST1,1
+        PRINT_NOTIFICATION_MESSAGE CONCATENATED_STRING,1
         GET_LEVEL
         DRAW_STATUS_BAR_TEMPLATE 
         PRINT_PLAYER1_SCORE
@@ -1968,30 +1971,28 @@ REFRESH_DATA_  PROC NEAR
     MOV P2_ATTACKS_ONTARGET_NUM ,0 
     MOV P2_ATTACKS_MISSED_NUM ,0
     MOV PLAYER_ATTACKING ,1
-    MOV PLAYER_ATTACKING ,2
+    MOV PLAYER_ATTACKED ,2
     MOV GAME_END,0
     MOV JUMP_COUNTER, 1
     MOV SLIDER_CURRENT_ROW, SLIDER_INITIAL_ROW
     ; RESET SHIPS POSITIONS
     MOV CX, 0
-    MOV BX,N_SHIPS * 4
-    MOV SI, P1_SHIPS_POINTS
-    MOV DI, P2_SHIPS_POINTS
+    MOV SI, OFFSET P1_SHIPS_POINTS
+    MOV DI, OFFSET P2_SHIPS_POINTS
     RESET_SHIPS_POSITIONS:
         MOV WORD PTR [SI], -2
         MOV WORD PTR [DI], -2
         ADD SI, 2
         ADD DI, 2
-        INC CX
-        CMP BX,CX
+        CMP CX, N_SHIPS * 4
     JNZ RESET_SHIPS_POSITIONS
     ; RESET REMAINING CELLS
     MOV CX, 0
-    MOV SI, P1_SHIPS_REMAINING_CELLS
-    MOV DI, P1_SHIPS_SIZES
-    MOV BX, P2_SHIPS_REMAINING_CELLS
-    MOV BP, P2_SHIPS_SIZES
-    RESET_REMAINING_CELLS
+    MOV SI, OFFSET P1_SHIPS_REMAINING_CELLS
+    MOV DI, OFFSET P1_SHIPS_SIZES
+    MOV BX, OFFSET P2_SHIPS_REMAINING_CELLS
+    MOV BP, OFFSET P2_SHIPS_SIZES
+    RESET_REMAINING_CELLS:
         MOV AX, WORD PTR [DI]
         MOV BYTE PTR [SI], AL
         MOV AX, WORD PTR DS:[BP]
@@ -2961,5 +2962,49 @@ CLEAR_GAME_SCREEN_  PROC    NEAR
     DRAW_RECTANGLE  0, 0, GAME_SCREEN_MAX_X, GAME_SCREEN_MAX_Y, AL  
     RET
 CLEAR_GAME_SCREEN_  ENDP
-
+;-----------------------------------------; 
+CONCATENATE_  PROC    NEAR
+    ; PARAMETERS
+    ; AX = PLAYER INDEX
+    ; BX = OFFSET STRING   
+    CMP AX,1
+    JNE PLAYER_2_CONCATENATION
+    MOV SI,0
+    MOV SI,OFFSET P1_USERNAME
+    INC SI
+    MOV AX,0
+    MOV AL,BYTE PTR[SI]
+    MOV CONCATENATED_STRING,AL
+    MOV CX,0
+    MOV CL,BYTE PTR[SI]
+    INC SI
+    MOV DI,0
+    MOV DI,OFFSET CONCATENATED_STRING
+    INC DI
+    REP MOVSB
+    JMP STRING_CONCATENATION
+    PLAYER_2_CONCATENATION: 
+    MOV SI,0
+    MOV SI,OFFSET P2_USERNAME
+    INC SI
+    MOV AX,0
+    MOV AL,BYTE PTR[SI]
+    MOV CONCATENATED_STRING,AL
+    MOV CX,0
+    MOV CL,BYTE PTR[SI]
+    INC SI
+    MOV DI,0
+    MOV DI,OFFSET CONCATENATED_STRING
+    INC DI
+    REP MOVSB
+    STRING_CONCATENATION:
+    MOV SI,OFFSET BX
+    MOV CL,BYTE PTR[SI]
+    MOV AX,0
+    MOV AL,BYTE PTR[SI]
+    ADD CONCATENATED_STRING, AL
+    INC SI 
+    REP MOVSB   
+    RET
+CONCATENATE_  ENDP
 END     MAIN
