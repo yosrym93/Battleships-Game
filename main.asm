@@ -24,6 +24,7 @@ PLAYER_ATTACKING                        DB 1
 PLAYER_ATTACKED                         DB 2
 GAME_END                                DB 0
 SHIP_INDEX                              DB 0
+SHIP_SIZE                               DW ?
 
 ;---------------- STATUS BAR - ------------------------; 
 SCORE_CONSTANT_TEXT                     DB  10,"'s score: "
@@ -372,10 +373,10 @@ POWER_UP_PICKER_    ENDP
     
      MOV IS_DESTROY_SHIP_ACTIVATED  , 1
      
-     Mov ah,2CH               ;Get Time
-     int 21h 
+     MOV AH,2CH               ;GET TIME
+     INT 21H 
      
-     Mov RANDOM_NUMBER, DH
+     MOV RANDOM_NUMBER, DH
      MOV CL ,DH
      MOV CH ,00h
      MOV DL ,002
@@ -384,17 +385,31 @@ POWER_UP_PICKER_    ENDP
      DIV DL
      MOV RANDOM_PLAYER , AH
      
-     MOV DL ,0Ah
+     MOV DL ,0AH
      MOV AX , CX
-     MOV DH , 0
      DIV DL 
-     MOV RANDOM_SHIP , AH
-    
-     MOV Dl ,RANDOM_SHIP
+     MOV RANDOM_SHIP , AH 
+     MOV DL ,RANDOM_SHIP
      MOV DH ,00
      CMP RANDOM_PLAYER , 1
      JZ DESTROY_PLAYER1_SHIP
-     MOV BX, OFFSET P1_ATTACKS_ONTARGET         ;Destroy Player 1 Attack , Means That Player 2 Attacked
+     DESTROY_PLAYER2_SHIP:
+     ; CHECK IF THE SHIP IS ALREADY DESTROYED
+     MOV BX, OFFSET P2_SHIPS_REMAINING_CELLS
+     ADD BX, DX
+     P2_CHECK_ALREADY_DESTROYED:
+        CMP BYTE PTR[BX], 0
+        JNZ P2_SHIP_NOT_DESTROYED
+        INC DX
+        INC BX
+        CMP DX, 0AH
+        JNZ P2_CHECK_ALREADY_DESTROYED
+        MOV DX, 0
+        MOV BX, OFFSET P2_SHIPS_REMAINING_CELLS
+        JMP P2_CHECK_ALREADY_DESTROYED
+     P2_SHIP_NOT_DESTROYED:
+     
+     MOV BX, OFFSET P1_ATTACKS_ONTARGET         ; DESTROY PLAYER 2 SHIP --> ADD TO P1 ATTACKS
      MOV AX, P1_ATTACKS_ONTARGET_NUM
      MOV CL, 4
      MUL CL                                      
@@ -403,7 +418,12 @@ POWER_UP_PICKER_    ENDP
      MOV AX, DX
      MOV CL, 2
      MUL CL                                      
-     ADD DI, AX                                  ;DI --> The Size of The SHIP                       
+     ADD DI, AX 
+     MOV AX, [DI]     
+     MOV SHIP_SIZE, AX                        ;SHIP_SIZE --> The Size of The SHIP
+     MOV DI, OFFSET P2_SHIPS_REMAINING_CELLS
+     MOV AX, DX
+     ADD DI, AX                                 ; DI --> REMAINING CELLS
      MOV SI, OFFSET P2_SHIPS_IS_VERTICAL
      MOV AX, DX
      MOV CL, 2
@@ -414,9 +434,27 @@ POWER_UP_PICKER_    ENDP
      MOV CL, 8
      MUL CL                                      
      ADD BP, AX                                 ;BP --> The Start Point Of THe SHIP
+     ; INCREASE THE COUNT OF THE ATTACKS
+     MOV AX, SHIP_SIZE
+     ADD P1_ATTACKS_ONTARGET_NUM, AX
      JMP DESTROY_RANDOM_SHIP_NOW
      
      DESTROY_PLAYER1_SHIP:
+     ; CHECK IF THE SHIP IS ALREADY DESTROYED
+     MOV BX, OFFSET P1_SHIPS_REMAINING_CELLS
+     ADD BX, DX
+     P1_CHECK_ALREADY_DESTROYED:
+        CMP BYTE PTR[BX], 0
+        JNZ P1_SHIP_NOT_DESTROYED
+        INC BX
+        INC DX
+        CMP DX, 0AH
+        JNZ P1_CHECK_ALREADY_DESTROYED
+        MOV DX, 0
+        MOV BX, OFFSET P1_SHIPS_REMAINING_CELLS
+        JMP P1_CHECK_ALREADY_DESTROYED
+     P1_SHIP_NOT_DESTROYED:
+     
      MOV BX, OFFSET P2_ATTACKS_ONTARGET         ;Destroy Player 1 Attack , Means That Player 2 Attacked
      MOV AX, P2_ATTACKS_ONTARGET_NUM
      MOV CL, 4
@@ -426,7 +464,12 @@ POWER_UP_PICKER_    ENDP
      MOV AX, DX
      MOV CL, 2
      MUL CL                                      
-     ADD DI, AX                                  ;DI --> The Size of The SHIP                       
+     ADD DI, AX
+     MOV AX, [DI]     
+     MOV SHIP_SIZE, AX                        ;SHIP_SIZE --> The Size of The SHIP  
+     MOV DI, OFFSET P1_SHIPS_REMAINING_CELLS
+     MOV AX, DX
+     ADD DI, AX                                 ; DI --> REMAINING CELLS     
      MOV SI, OFFSET P1_SHIPS_IS_VERTICAL
      MOV AX, DX
      MOV CL, 2
@@ -437,38 +480,41 @@ POWER_UP_PICKER_    ENDP
      MOV CL, 8
      MUL CL                                      
      ADD BP, AX                                 ;BP --> The Start Point Of THe SHIP
-     
+     ; INCREASE THE COUNT OF THE ATTACKS
+     MOV AX, SHIP_SIZE
+     ADD P2_ATTACKS_ONTARGET_NUM, AX
      
      DESTROY_RANDOM_SHIP_NOW:
-     MOV Ax ,[SI]
-     MOV CX , [DI]
+     MOV AX , [SI]
+     MOV CX , SHIP_SIZE
+     MOV BYTE PTR [DI], 0
      CMP AX ,1
      JZ THE_RANDOM_SHIP_IS_VERTICAL
     
  THE_RANDOM_SHIP_IS_HORIZONTAL: 
-     MOV DX , [BP]      ;DX ---> X of The SHIP
-     MOV Ax , [BP+2]    ;AX ---> Y of The SHIP
-     LOOP_ON_THE_VSHIP_CELLS:
+     MOV DX , DS:[BP]      ;DX ---> X of The SHIP
+     MOV Ax , DS:[BP+2]    ;AX ---> Y of The SHIP
+     LOOP_ON_THE_HSHIP_CELLS:
      MOV [BX] , DX
      MOV [BX + 2], AX
      INC DX
      ADD BX , 4
      DEC CX
-     JNZ LOOP_ON_THE_VSHIP_CELLS
-     
+     JNZ LOOP_ON_THE_HSHIP_CELLS
+     JMP RANDOM_SHIP_DESTROYED
 
  THE_RANDOM_SHIP_IS_VERTICAL:
-     MOV DX , [BP]      ;DX ---> X of The SHIP
-     MOV Ax , [BP+2]    ;AX ---> Y of The SHIP
-     LOOP_ON_THE_HSHIP_CELLS:
+     MOV DX , DS:[BP]      ;DX ---> X of The SHIP
+     MOV Ax , DS:[BP+2]    ;AX ---> Y of The SHIP
+     LOOP_ON_THE_VSHIP_CELLS:
      MOV [BX] , DX
      MOV [BX + 2], AX
      INC AX
      ADD BX , 4
      DEC CX
-     JNZ LOOP_ON_THE_HSHIP_CELLS
+     JNZ LOOP_ON_THE_VSHIP_CELLS
      
-     
+     RANDOM_SHIP_DESTROYED:
      RET
      
  ACTIVATE_DESTROY_RANDOM_POWER_UP_    ENDP
@@ -1398,7 +1444,7 @@ DRAW_ALL_SHIPS_ON_GRID_   PROC    NEAR
     
     PLAYER2_ALL_SHIPS:  
         MOV SI, OFFSET P2_SHIPS_POINTS
-        MOV DI, OFFSET P1_SHIPS_REMAINING_CELLS    
+        MOV DI, OFFSET P2_SHIPS_REMAINING_CELLS    
         DRAW_ALL_SHIPS:
             MOV Al,BYTE PTR[DI]
             AND Al, Al
@@ -1781,18 +1827,14 @@ CHECK_CELL_AND_UPDATE_ATTACKS_DATA_  PROC NEAR
     
     PLAYER1_ATTACK_ONTARGET:
         MOV SI , OFFSET P2_SCORE
-        MOV CX ,[SI]         ;DECREMENT THE SCORE
-        DEC CX 
-        MOV [SI] , CX 
+        DEC BYTE PTR [SI]         ;DECREMENT THE SCORE
         PRINT_PLAYER2_SCORE
 
         MOV BP , OFFSET P2_SHIPS_REMAINING_CELLS  ;DECREMENT THE REMAINING CELL
-        MOV DL , SHIP_INDEX
+        MOV DL , SHIP_INDEX  
         MOV DH , 0
         ADD BP , DX
-        MOV DL , [BP]         
-        DEC DL
-        MOV [BP] ,DL
+        DEC BYTE PTR DS:[BP]
         
         
         MOV BX, OFFSET P1_ATTACKS_ONTARGET
@@ -1822,9 +1864,7 @@ CHECK_CELL_AND_UPDATE_ATTACKS_DATA_  PROC NEAR
         MOV DL , SHIP_INDEX
         MOV DH , 0
         ADD BP , DX
-        MOV DL , [BP]
-        DEC DL
-        MOV [BP] ,DL
+        DEC BYTE PTR DS:[BP]
       
         
         MOV BX, OFFSET P2_ATTACKS_ONTARGET
@@ -1905,7 +1945,9 @@ REFRESH_DATA_  PROC NEAR
     MOV PLAYER_ATTACKING ,1
     MOV PLAYER_ATTACKING ,2
     MOV GAME_END,0
-    
+    MOV JUMP_COUNTER, 1
+    MOV SLIDER_CURRENT_ROW, SLIDER_INITIAL_ROW
+    ; RESET SHIPS POSITIONS
     MOV CX, 0
     MOV SI, P1_SHIPS_POINTS
     MOV DI, P2_SHIPS_POINTS
@@ -1916,6 +1958,24 @@ REFRESH_DATA_  PROC NEAR
         ADD DI, 2
         CMP CX, N_SHIPS * 4
     JNZ RESET_SHIPS_POSITIONS
+    ; RESET REMAINING CELLS
+    MOV CX, 0
+    MOV SI, P1_SHIPS_REMAINING_CELLS
+    MOV DI, P1_SHIPS_SIZES
+    MOV BX, P2_SHIPS_REMAINING_CELLS
+    MOV BP, P2_SHIPS_SIZES
+    RESET_REMAINING_CELLS
+        MOV AX, WORD PTR [DI]
+        MOV BYTE PTR [SI], AL
+        MOV AX, WORD PTR DS:[BP]
+        MOV BYTE PTR [BX], AL
+        INC SI
+        INC BX
+        ADD DI, 2
+        ADD BP, 2
+        INC CX
+        CMP CX, N_SHIPS
+    JNZ RESET_REMAINING_CELLS
     RET 
     
 REFRESH_DATA_   ENDP
