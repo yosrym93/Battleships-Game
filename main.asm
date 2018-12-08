@@ -374,17 +374,20 @@ POWER_UP_PICKER_    ENDP
      
      Mov ah,2CH               ;Get Time
      int 21h 
-     Mov RANDOM_NUMBER, DH
-     MOV DL ,0
-     MOV CL ,02h
      
-     MOV Ax , DX
-     DIV CL
+     Mov RANDOM_NUMBER, DH
+     MOV CL ,DH
+     MOV CH ,00h
+     MOV DL ,002
+     
+     MOV Ax , CX
+     DIV DL
      MOV RANDOM_PLAYER , AH
      
-     MOV CL ,0Ah
-     MOV AX , DX
-     DIV CL 
+     MOV DL ,0Ah
+     MOV AX , CX
+     MOV DH , 0
+     DIV DL 
      MOV RANDOM_SHIP , AH
     
      MOV Dl ,RANDOM_SHIP
@@ -393,7 +396,7 @@ POWER_UP_PICKER_    ENDP
      JZ DESTROY_PLAYER1_SHIP
      MOV BX, OFFSET P1_ATTACKS_ONTARGET         ;Destroy Player 1 Attack , Means That Player 2 Attacked
      MOV AX, P1_ATTACKS_ONTARGET_NUM
-     MOV CL, 2
+     MOV CL, 4
      MUL CL                                      
      ADD BX, AX                                  ;BX --> The Start Point where should I and THe Destroyed Ship points
      MOV DI, OFFSET P2_SHIPS_SIZES
@@ -416,7 +419,7 @@ POWER_UP_PICKER_    ENDP
      DESTROY_PLAYER1_SHIP:
      MOV BX, OFFSET P2_ATTACKS_ONTARGET         ;Destroy Player 1 Attack , Means That Player 2 Attacked
      MOV AX, P2_ATTACKS_ONTARGET_NUM
-     MOV CL, 2
+     MOV CL, 4
      MUL CL                                      
      ADD BX, AX                                  ;BX --> The Start Point where I should put THe Destroyed Ship points
      MOV DI, OFFSET P1_SHIPS_SIZES
@@ -1972,7 +1975,7 @@ MAIN_LOOP:
     
     CMP IS_REVERSE_ATTACK_ACTIVATED , 1
     jnz NO_REVERSE_ATTACK_OR_REVERSE_IT2
-    AND IS_REVERSE_COUNT , 0
+    CMP IS_REVERSE_COUNT , 0
     jz THE_REVERSE_WILL_BE_IN_THE_NEXT_TURN
      
     MOV AL , PLAYER_ATTACKED              ;RETURN EVERYTHING
