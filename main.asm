@@ -6,6 +6,21 @@ INCLUDE NADER.INC
 .STACK 64
 .DATA
 
+;---------------- STARTING PAGE -------------------------
+WELCOME_MSG                 DB   24,'Welcome To Battleships !'
+CONTROLLERS_MSG             DB   10,'Controls: '
+ARROWS_MSG                  DB   60,'ARROWS: For navigation (in the grid and power ups selection)'
+TAB_MSG                     DB   46,'TAB: To enter and exit the power ups selection'
+SPACE_MSG                   DB   47,'SPACE: To select a column or control the slider'
+ENTER_MSG                   DB   37,'ENTER: To move throughout game stages'
+
+;---------------- GENERAL MESSAGES -------------------------
+PLAYER_TURN         DB      35,"'s turn ! Press ENTER to continue !"
+CHOOSE_LEVEL_MSG    DB      33,"- Press ENTER to choose a level !"
+ATTACK_TIME_MSG     DB      41,"- Attack time ! Press ENTER to continue !"
+VIEW_SHIPS_MSG      DB      97,"- Take a loot at your ships to see the effect of your opponent's attack !"
+                    DB      " Press ENTER to ATTACK !"
+
 ;---------------- ATTACK -----------------------------------
 SELECT_ATTACK_COLUMN_MSG                DB  84,"- Navigate through columns and press SPACE "
                                         DB  "to select the column of the attacked cell"
@@ -32,7 +47,7 @@ TO_QUIT_GAME                            DB  28,"- To quit the game press ESC"
 ;---------------- STATUS BAR - ------------------------; 
 SCORE_CONSTANT_TEXT                     DB  10,"'s score: "
 EMPTY_STRING                            DB  100,100 DUP(' ')
-CONCATENATED_STRING                     DB  100,100 DUP(' ')
+CONCATENATED_STRING                     DB  100,"- ",98 DUP(' ')
 ;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
 
 STATUS_TEST1                            DB  35," is a good person and hates oatmeal"
@@ -59,8 +74,8 @@ DOWN_ORIENTATION                        DB  ?   ;            = 1 : VALID
 LEFT_ORIENTATION                        DB  ?
 RIGHT_ORIENTATION                       DB  ?
 SELECTED_PLAYER_SHIPS                   DB  ?
-SELECTOR_STARTING_MSG                   DB  70,"- Please select the starting cell of the highlighted ship on the right"
-ORIENTATION_SELECTION_MSG               DB  68,"- Please select the orientation of the highlighted ship on the right"
+SELECTOR_STARTING_MSG                   DB  84,"- Please select the starting cell of the highlighted ship on the right (Press ENTER)"
+ORIENTATION_SELECTION_MSG               DB  82,"- Please select the orientation of the highlighted ship on the right (Press ENTER)"
 NO_POSSIBLE_ORIENTATION                 DB  96,"- Sorry there is no possible orientation on this cell, press ENTER and choose another valid cell"
 START_PLACING_SHIPS_MSG                 DB  88,"- You are going to place your ships (on the right) on the grid now, press ENTER to start"
 ALL_SHIPS_PLACED_MSG                    DB  53,"- You placed all your ships ! Press ENTER to continue"
@@ -171,10 +186,12 @@ RANDOM_PLAYER                    DB   ?
 RANDOM_NUMBER                    DB   ?
 DESTROY_SHIP_MSG                 DB   67,"- Use this to destroy ANY random ship (it can be a ship of yours !)"
 ATTACK_TWICE_MSG                 DB   40,"- Use this to attack twice in one turn !"
-REVERSED_ATTACK_MSG              DB   70,"- Use this to redirect your opponent's next attack towards his ships !"
+REVERSED_ATTACK_MSG              DB   74,"- Use this to redirect your opponent's next attack towards his own ships !"
 IN_SECOND_ATTACK_MSG             DB   70,"- You are now doing the extra attack, you cannot activate a power up !"
 REVERSE_A_REVERSED_ATTACK_MSG    DB   98,"- You and your opponent tried to reverse each other's attacks this turn ! " 
-                                 DB   "All reverses cancelled !" 
+                                 DB   "All reverses cancelled !"
+YOUR_ATTACK_WAS_REVERSED_MSG     DB   100,"- Looks like your opponent reversed your attack towards your ships !"
+                                 DB   " Press ENTER to see the damage !"
 POWER_UPS_CURRENT_PLAYER         DB   ? 
 POWER_UP_INDEX                   DB   ?
 
@@ -182,7 +199,7 @@ POWER_UP_INDEX                   DB   ?
 PLEASE_ENTER_YOUR_NAME_MSG  DB    19H,'- Please enter your name:'
 PLAYER1_MSG                 DB    8H ,'Player 1' 
 PLAYER2_MSG                 DB    8H ,'Player 2'         
-PRESS_ENTER_MSG             DB    1BH,'Press ENTER key to continue' 
+PRESS_ENTER_MSG             DB    1DH,'- Press ENTER key to continue' 
 TO_START_GAME_MSG           DB    1CH,'- To start the game press F2'
 ENTER_LEVEL_MSG             DB    1EH,'- Choose the game level 1 or 2'
 TO_END_PROG_MSG             DB    1EH,'- To end the program press ESC'
@@ -249,15 +266,13 @@ MOV DS, AX
 MOV ES, AX
 
         INITIALIZE_PROGRAM
-        ; USER_NAMES
+        STARTING_PAGE
+        USER_NAMES
 STARTING_POINT:
-        ; MAIN_MENU
+        MAIN_MENU
         GET_LEVEL
         DRAW_STATUS_BAR_TEMPLATE 
-        PRINT_PLAYER1_SCORE
-        PRINT_PLAYER2_SCORE
-        ; PLACE_SHIPS_ON_GRID 1
-        ; PLACE_SHIPS_ON_GRID 2
+        PLAYERS_PLACE_SHIPS
         START_THE_GAME
 PRE_EXIT_SCREEN:
         DRAW_PRE_EXIT_SCREEN     
@@ -374,6 +389,7 @@ POWER_UP_PICKER_ PROC    NEAR
     
     REVERSE_A_REVERSED_ATTACK:
     MOV IS_REVERSE_ATTACK_ACTIVATED , 0
+    MOV IS_REVERSE_COUNT, 0
     PRINT_NOTIFICATION_MESSAGE  REVERSE_A_REVERSED_ATTACK_MSG, 1
     PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 2
     WAIT_FOR_ENTER_RR:
@@ -1008,8 +1024,6 @@ IS_CELL_ON_GRID_   ENDP
 PLACE_SHIPS_ON_GRID_     PROC    NEAR
     ; PARAMETERS
     ; AL = PLAYER NUMBER (1 OR 2)
-    CLEAR_GAME_SCREEN WHITE
-    DRAW_GRID
     DRAW_SELECTION_SHIPS AL
     MOV SELECTED_PLAYER_SHIPS,AL
     MOV CX, 0
@@ -1439,9 +1453,9 @@ START_WRITING_HERE:
      JB START_WRITING_HERE
      CMP BL,'Z'
      JBE GET_USERNAME_SUCCESSFULLY
-     CMP BL,'A'
+     CMP BL,'a'
      JB START_WRITING_HERE
-     CMP BL,'Z'
+     CMP BL,'z'
      JA START_WRITING_HERE
      
  
@@ -1450,7 +1464,7 @@ START_WRITING_HERE:
  GET_USER_NAME_     ENDP
 ;-------------------------------------;
 USER_NAMES_     PROC NEAR
-
+    
      GET_USER_NAME 1H,P1_USERNAME
      CLEAR_GAME_SCREEN  BLACK 
      GET_USER_NAME 2H,P2_USERNAME
@@ -1463,7 +1477,6 @@ MAIN_MENU_     PROC NEAR
 
         PRINT_MESSAGE TO_START_GAME_MSG , 1025H , 0FF0FH
         PRINT_MESSAGE TO_END_PROG_MSG , 1425H , 0FF0FH
-
   NOTVALID:          
         MOV AH,0
         INT 16H
@@ -1475,6 +1488,7 @@ MAIN_MENU_     PROC NEAR
         JNZ NOTVALID            
   CONT2:       
   CLEAR_GAME_SCREEN BLACK 
+  DRAW_NOTIFICATION_BAR
   PRINT_NOTIFICATION_MESSAGE END_GAME_MSG, 2
      RET 
 
@@ -1492,13 +1506,11 @@ INITIALIZE_PROGRAM_     PROC NEAR
 INITIALIZE_PROGRAM_     ENDP
 ;-------------------------------------;
 GET_LEVEL_     PROC NEAR
-
- CLEAR_GAME_SCREEN BLACK
  PRINT_MESSAGE ENTER_LEVEL_MSG , 1025H , 0FF0FH
  PRINT_MESSAGE MSG_DASH , 122EH , 0FF0FH
  PRINT_MESSAGE MSG_1 , 122FH , 0FF0FH
  PRINT_MESSAGE MSG_2 , 123AH , 0FF0FH
-  
+ PRINT_NOTIFICATION_MESSAGE CHOOSE_LEVEL_MSG, 1
   NOTVALID2:
         
         MOV AH,0
@@ -1541,8 +1553,6 @@ GET_LEVEL_     PROC NEAR
         SET_LEVEL_SETTINGS 2
         JMP BACK
  
-  ;THE_USER_PRESS_ESC_INSIDE_LEVEL_SELECTION:
-  ;MOV GAME_END , 1
    BACK:
    RET
 GET_LEVEL_     ENDP
@@ -1919,9 +1929,7 @@ CHECK_CELL_AND_UPDATE_ATTACKS_DATA_  PROC NEAR
     MOV BL , PLAYER_ATTACKING
     MOV PLAYER_ATTACKED  , BL
     MOV PLAYER_ATTACKING , AL  
-    MOV AL , IS_REVERSE_COUNT
-    INC AL 
-    MOV IS_REVERSE_COUNT , AL
+    INC IS_REVERSE_COUNT
 
     NO_REVERSE_ATTACK:
     IS_CELL_ON_GRID
@@ -2016,7 +2024,7 @@ CHECK_CELL_AND_UPDATE_ATTACKS_DATA_   ENDP
 SCENE1_PLAYER_ATTACKS_  PROC NEAR
     
     CLEAR_GAME_SCREEN   WHITE
-    DRAW_GRID    
+    DRAW_GRID
     DRAW_ALL_DESTROYED_SHIPS PLAYER_ATTACKED
     DRAW_ALL_X_SIGNS PLAYER_ATTACKING
     DRAW_POWER_UPS  PLAYER_ATTACKING
@@ -2025,11 +2033,39 @@ SCENE1_PLAYER_ATTACKS_  PROC NEAR
 SCENE1_PLAYER_ATTACKS_   ENDP
 ;-----------------------------------------;
 SCENE2_PLAYER_WATCHES_  PROC NEAR
+    MOV AL, 0
+    CMP IS_REVERSE_ATTACK_ACTIVATED, 1
+    JNZ ANNOUNCE_OTHER_PLAYER_TURN
+    CMP IS_REVERSE_COUNT, 2
+    JNZ ANNOUNCE_OTHER_PLAYER_TURN
+    JMP VIEW_OWN_DAMAGE
     
+    ANNOUNCE_OTHER_PLAYER_TURN:
+    CONCATENATE PLAYER_TURN, PLAYER_ATTACKED
+    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
+    PRESS_ENTER_TO_CONTINUE
+    PRINT_NOTIFICATION_MESSAGE  VIEW_SHIPS_MSG, 1
+    JMP VIEW_PLAYER_SHIPS
+    
+    VIEW_OWN_DAMAGE:
+    MOV AL, 1
+    PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 1
+    
+    VIEW_PLAYER_SHIPS:
     CLEAR_GAME_SCREEN   WHITE
     DRAW_GRID
     DRAW_ALL_SHIPS_ON_GRID PLAYER_ATTACKED
     DRAW_ALL_X_SIGNS PLAYER_ATTACKING
+    
+    ; ANNOUNCE OTHER PLAYER'S TURN IN CASE THIS TURN WAS REVERSED
+    CMP AL, 1
+    JNZ GO_TO_ATTACK_SCENE
+    PRESS_ENTER_TO_CONTINUE
+    CONCATENATE PLAYER_TURN, PLAYER_ATTACKING
+    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
+    PRESS_ENTER_TO_CONTINUE
+    
+    GO_TO_ATTACK_SCENE:
     RET
     
 SCENE2_PLAYER_WATCHES_   ENDP
@@ -2115,9 +2151,15 @@ PRINT_ATTACK_MSG_    PROC    NEAR
     CMP IS_ON_GRID, 0
     JZ ATTACK_OUTSIDE_GRID
     
+    CMP IS_REVERSE_ATTACK_ACTIVATED, 1
+    JNZ CONTINUE_CHECKING
+    CMP IS_REVERSE_COUNT, 2
+    JZ ATTACK_IS_REVERSED
+    
+    CONTINUE_CHECKING:
     CMP IS_ATTACKED_BEFORE, 1
     JZ ATTACK_NO_EFFECT
-    
+      
     CMP IS_ONTARGET, 1
     JZ ATTACK_ON_TARGET
     
@@ -2130,6 +2172,10 @@ PRINT_ATTACK_MSG_    PROC    NEAR
     
     ATTACK_NO_EFFECT:
     PRINT_NOTIFICATION_MESSAGE  CELL_ALREADY_ATTACKED_MSG, 1
+    JMP WAIT_FOR_ENTER_GO_ON
+    
+    ATTACK_IS_REVERSED:
+    PRINT_NOTIFICATION_MESSAGE  YOUR_ATTACK_WAS_REVERSED_MSG, 1
     JMP WAIT_FOR_ENTER_GO_ON
     
     ATTACK_ON_TARGET:
@@ -2180,12 +2226,9 @@ MAIN_LOOP:
     JMP NO_REVERSE_ATTACK_OR_REVERSE_IT2
     
     THE_REVERSE_WILL_BE_IN_THE_NEXT_TURN:
-    MOV AL , IS_REVERSE_COUNT
-    INC AL 
-    MOV IS_REVERSE_COUNT , AL
+    INC IS_REVERSE_COUNT 
     
     NO_REVERSE_ATTACK_OR_REVERSE_IT2:
-    PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 1
     NOT_ENTER2:
     MOV AH,0                        ;WAIT FOR THE USER TO CLICK ENTER
     INT 16H
@@ -2406,7 +2449,8 @@ DRAW_STATUS_BAR_TEMPLATE_   PROC    NEAR
     MOV DL,P2_USERNAME+1  ;X
     ADD DL,40H
     PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
- 
+    PRINT_PLAYER1_SCORE
+    PRINT_PLAYER2_SCORE
     RET
 DRAW_STATUS_BAR_TEMPLATE_   ENDP
 ;-----------------------------------------;
@@ -2414,7 +2458,7 @@ DRAW_NOTIFICATION_BAR_   PROC    NEAR
 ;NOTIFICATION BAR                        
     MOV AX, 0C0FH
     MOV CX,0
-    MOV DX,545  
+    MOV DX,555  
     LOOP1:
     INT 10H
     INC CX
@@ -3063,9 +3107,9 @@ CLEAR_GAME_SCREEN_  ENDP
 ;-----------------------------------------; 
 CONCATENATE_  PROC    NEAR
     ; PARAMETERS
-    ; AX = PLAYER INDEX
+    ; AL = PLAYER NUMBER
     ; BX = OFFSET STRING   
-    CMP AX,1
+    CMP AL,1
     JNE PLAYER_2_CONCATENATION
     MOV SI,0
     MOV SI,OFFSET P1_USERNAME
@@ -3079,6 +3123,7 @@ CONCATENATE_  PROC    NEAR
     MOV DI,0
     MOV DI,OFFSET CONCATENATED_STRING
     INC DI
+    ADD DI, 2 ; TO ACCOUNT FOR THE DASH AND SPACE
     REP MOVSB
     JMP STRING_CONCATENATION
     PLAYER_2_CONCATENATION: 
@@ -3094,6 +3139,7 @@ CONCATENATE_  PROC    NEAR
     MOV DI,0
     MOV DI,OFFSET CONCATENATED_STRING
     INC DI
+    ADD DI, 2 ; TO ACCOUNT FOR THE DASH AND SPACE
     REP MOVSB
     STRING_CONCATENATION:
     MOV SI,OFFSET BX
@@ -3107,7 +3153,7 @@ CONCATENATE_  PROC    NEAR
 CONCATENATE_  ENDP
 ;-----------------------------------------; 
 DRAW_PRE_EXIT_SCREEN_    PROC    NEAR
-    DRAW_RECTANGLE  0, 0, 800, 544, BLACK ;CLEARS THE WHOLE SCREEN EXCEPT THE NOTIFICATION BAR
+    DRAW_RECTANGLE  0, 0, 800, 554, BLACK ;CLEARS THE WHOLE SCREEN EXCEPT THE NOTIFICATION BAR
     STAT_SCREEN
     DRAW_RECTANGLE  0, 0, 800, 600, BLACK ;CLEARS THE WHOLE SCREEN
     DRAW_NOTIFICATION_BAR
@@ -3121,5 +3167,60 @@ EXIT_GAME_    PROC    NEAR
     INT 21H 
     RET
 EXIT_GAME_    ENDP
-;-----------------------------------------;  
+;-----------------------------------------;
+PRESS_ENTER_TO_CONTINUE_    PROC    NEAR
+    KEEP_WAITING:
+        MOV AH, 0
+        INT 16H
+        CMP AH, EXIT_SCANCODE
+        JE PRE_EXIT_SCREEN
+        CMP AH, ENTER_SCANCODE
+    JNE KEEP_WAITING
+    RET
+PRESS_ENTER_TO_CONTINUE_    ENDP
+;-----------------------------------------;
+PLAYERS_PLACE_SHIPS_    PROC    NEAR
+    CLEAR_GAME_SCREEN WHITE
+    DRAW_GRID
+    CONCATENATE PLAYER_TURN, 1
+    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
+    PRESS_ENTER_TO_CONTINUE
+    PLACE_SHIPS_ON_GRID 1
+    
+    CLEAR_GAME_SCREEN   WHITE
+    DRAW_GRID
+    CONCATENATE PLAYER_TURN, 2
+    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
+    PRESS_ENTER_TO_CONTINUE
+    PLACE_SHIPS_ON_GRID 2
+    
+    CLEAR_GAME_SCREEN   WHITE
+    DRAW_GRID
+    CONCATENATE PLAYER_TURN, 1
+    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
+    PRESS_ENTER_TO_CONTINUE
+    
+    PRINT_NOTIFICATION_MESSAGE  ATTACK_TIME_MSG, 1
+    PRESS_ENTER_TO_CONTINUE
+    RET
+PLAYERS_PLACE_SHIPS_    ENDP
+;-----------------------------------------; 
+
+STARTING_PAGE_     PROC NEAR
+    PRINT_MESSAGE WELCOME_MSG , 0825H , 0FF28H
+    PRINT_MESSAGE CONTROLLERS_MSG , 0F10h , 0FF0FH
+    
+    PRINT_MESSAGE ARROWS_MSG , 1210H , 0FF0FH
+    PRINT_MESSAGE ENTER_MSG , 1410H , 0FF0FH        
+    PRINT_MESSAGE SPACE_MSG , 1610H , 0FF0FH
+    PRINT_MESSAGE TAB_MSG , 1810H , 0FF0FH
+    
+    PRINT_MESSAGE PRESS_ENTER_MSG , 2125H , 0FF0FH
+    
+
+    PRESS_ENTER_TO_CONTINUE
+    DRAW_RECTANGLE  0, 0, 800, 600, BLACK ;CLEARS THE WHOLE SCREEN
+    RET
+STARTING_PAGE_     ENDP
+;-----------------------------------------;   
 END     MAIN
