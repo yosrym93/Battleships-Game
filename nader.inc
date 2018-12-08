@@ -89,3 +89,15 @@ CALL CONCATENATE_
 POPA
 ENDM                    CONCATENATE
 ;------------------------------------------------------------------------;
+DRAW_PRE_EXIT_SCREEN	MACRO   
+PUSHA
+CALL DRAW_PRE_EXIT_SCREEN_
+POPA
+ENDM                    DRAW_PRE_EXIT_SCREEN
+;------------------------------------------------------------------------;
+EXIT_GAME		MACRO   
+PUSHA
+CALL EXIT_GAME_
+POPA
+ENDM                    EXIT_GAME
+;------------------------------------------------------------------------;
