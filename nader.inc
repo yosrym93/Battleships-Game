@@ -25,13 +25,13 @@ PRINT_NOTIFICATION_MESSAGE      MACRO       STATUS_TEXT, INDEX
 
 ENDM                    PRINT_NOTIFICATION_MESSAGE 
 ;------------------------------------------------------------------------;
-PRINT_PLAYER1_SCORE     MACRO 
+PRINT_PLAYER1_SCORE     MACRO  
 PUSHA                        
 CALL PRINT_PLAYER1_SCORE_
 POPA                       
 ENDM                    PRINT_PLAYER1_SCORE 
 ;------------------------------------------------------------------------;
-PRINT_PLAYER2_SCORE     MACRO 
+PRINT_PLAYER2_SCORE     MACRO  
 PUSHA                        
 CALL PRINT_PLAYER2_SCORE_
 POPA                       
