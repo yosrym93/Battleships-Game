@@ -164,15 +164,17 @@ TO_START_GAME_MSG           DB    1CH,'- To start the game press F2'
 ENTER_LEVEL_MSG             DB    1EH,'- Choose the game level 1 or 2'
 TO_END_PROG_MSG             DB    1EH,'- To end the program press ESC'
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
-LEVEL_STR               DB     2,?,?,?   ; 1 OR 2
-LEVEL                   DB     ?
+LEVEL                   DB     1
+MSG_1                   DB     1,'1'
+MSG_2                   DB     1,'2'
+MSG_Dash                DB     1,'-'
 
 ;---- NUMBER OF SHIPS AND CELLS ----------------------------------  DONE
 N_SHIPS          EQU 10         ; PLAYER 1 NUMBER OF SHIPS
 TOTAL_N_CELLS    EQU 32
 
 ;---------------- PLAYER 1 DATA ----------------------------------
-P1_USERNAME         DB  20, ?, 20 DUP ('?')
+P1_USERNAME         DB  16, ?, 16 DUP ('?')
 P1_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 P1_SCORE_STRING                         DB  2 DUP(?)
 
@@ -193,7 +195,7 @@ P1_SHIPS_REMAINING_CELLS    DB  N_SHIPS DUP(?)            ; NUMBER OF REMAINING 
 P1_SHIPS_IS_VERTICAL        DW  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
        
 ;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB  20, ?, 20 DUP ('?')
+P2_USERNAME         DB  16, ?, 16 DUP ('?')
 P2_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
 P2_SCORE_STRING                         DB  2 DUP(?)
 
@@ -221,7 +223,7 @@ MOV DS, AX
 MOV ES, AX
 
         INITIALIZE_PROGRAM
-        ;USER_NAMES
+        USER_NAMES
         
 STARTING_POINT:
 
@@ -230,13 +232,13 @@ STARTING_POINT:
         DRAW_STATUS_BAR_TEMPLATE 
         PRINT_PLAYER1_SCORE
         PRINT_PLAYER2_SCORE
-        ;PLACE_SHIPS_ON_GRID 1
-        ;PLACE_SHIPS_ON_GRID 2
-        ;START_THE_GAME
+        PLACE_SHIPS_ON_GRID 1
+        PLACE_SHIPS_ON_GRID 2
+        START_THE_GAME
         CLEAR_GAME_SCREEN   WHITE
         DRAW_GRID
-        DRAW_POWER_UPS
-        POWER_UP_PICKER
+        ;DRAW_POWER_UPS
+        ;POWER_UP_PICKER
 
 START_THE_GAME
 
@@ -1122,20 +1124,32 @@ GET_USER_NAME_     PROC NEAR
      CMP SI,1H
      JNZ PLAYER2
      PRINT_MESSAGE PLAYER1_MSG ,0C2EH , 0FF28H
-     JMP CONT
+     JMP START_WRITING_HERE
 PLAYER2:
      PRINT_MESSAGE PLAYER2_MSG ,0C2EH , 0FF28H
      
-CONT:        
+START_WRITING_HERE:  
+     DRAW_RECTANGLE  368,280,450,305,BLACK        
      MOV AH,02H             ;MOVE THE CURSOR
      MOV DX,122FH
      INT 10H
-        
+
      MOV AH,0AH            ;GET THE USER INPUT AND STORE IT IN USERNAME1 OR USERNAME2(SENT PARAMETER)
      MOV DX,DI
      INT 21H
-     RET 
+     MOV BL,[DI+2]
+     CMP BL,'A'
+     jB START_WRITING_HERE
+     CMP BL,'Z'
+     jBE GET_USERNAME_SUCCESSFULLY
+     CMP BL,'a'
+     jB START_WRITING_HERE
+     CMP BL,'z'
+     jA START_WRITING_HERE
      
+ 
+     GET_USERNAME_SUCCESSFULLY:    
+     RET     
  GET_USER_NAME_     ENDP
 ;-------------------------------------;
 USER_NAMES_     PROC NEAR
@@ -1181,33 +1195,56 @@ INITIALIZE_PROGRAM_     ENDP
 ;-------------------------------------;
 GET_LEVEL_     PROC NEAR
 
+ CLEAR_GAME_SCREEN BLACK
  PRINT_MESSAGE ENTER_LEVEL_MSG , 1025H , 0FF0FH
+ PRINT_MESSAGE MSG_Dash , 122EH , 0FF0FH
+ PRINT_MESSAGE MSG_1 , 122FH , 0FF0FH
+ PRINT_MESSAGE MSG_2 , 123AH , 0FF0FH
   
   NOTVALID2:
-
-        MOV AH,02H                 ;MOVE THE CURSER
-        MOV DX,1232H
-        INT 10H
         
-        MOV AH,0AH                 ;GET USER INPUT AND STORE IT IN LEVEL  
-        MOV DX,OFFSET LEVEL_STR
-        INT 21H     
-        
-        MOV BX,DX                  ;CHECK THAT THE USER INPUT 1 OR 2 
-        MOV CL,[BX+2]
-        CMP CL,31H
-        JZ  SET_LEVEL1
-        CMP CL,32H
+        MOV AH,0
+        INT 16H
+        CMP AH , Right_SCANCODE
+        jz MOVE_THE_DASH_TO_RIGHT
+        CMP AH , LEFT_SCANCODE
+        jz MOVE_THE_DASH_TO_LEFT
+        ;CMP AH , EXIT_SCANCODE
+        ;jz THE_USER_PRESS_ESC_INSIDE_LEVEL_SELECTION
+        CMP AH , ENTER_SCANCODE
+        jz THE_LEVEL_IS_KNOWN_NOW
         JNZ NOTVALID2
-        JMP SET_LEVEL2
+
+       
+    MOVE_THE_DASH_TO_RIGHT:
+    DRAW_RECTANGLE  368,292,375,297,BLACK
+    PRINT_MESSAGE MSG_Dash , 1239H , 0FF0FH
+    MOV DL ,2
+    MOV LEVEL , DL
+    jmp NOTVALID2
+    
+    MOVE_THE_DASH_TO_LEFT:
+     DRAW_RECTANGLE  455,292,464,297,BLACK
+    PRINT_MESSAGE MSG_Dash , 122EH , 0FF0FH
+    MOV DL ,1
+    MOV LEVEL , DL
+    jmp NOTVALID2
+    
+    THE_LEVEL_IS_KNOWN_NOW:
+    CMP LEVEL , 1
+    jnz SET_LEVEL2
+        
   SET_LEVEL1:
         SET_LEVEL_SETTINGS 1
         JMP BACK
   SET_LEVEL2:
         SET_LEVEL_SETTINGS 2
-  BACK:
-
-        RET
+        JMP BACK
+ 
+  ;THE_USER_PRESS_ESC_INSIDE_LEVEL_SELECTION:
+  ;Mov GAME_END , 1
+   BACK:
+   RET
 GET_LEVEL_     ENDP
 ;-------------------------------------;
 
