@@ -81,3 +81,11 @@ CALL STAT_SCREEN_
 POPA
 ENDM                    STAT_SCREEN
 ;------------------------------------------------------------------------;
+CONCATENATE      MACRO   STRING,PLAYER_INDEX
+PUSHA
+MOV BX,OFFSET STRING
+MOV AX,PLAYER_INDEX
+CALL CONCATENATE_
+POPA
+ENDM                    CONCATENATE
+;------------------------------------------------------------------------;
