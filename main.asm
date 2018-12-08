@@ -18,7 +18,7 @@ ENTER_MSG                   DB   37,'ENTER: To move throughout game stages'
 PLAYER_TURN         DB      35,"'s turn ! Press ENTER to continue !"
 CHOOSE_LEVEL_MSG    DB      33,"- Press ENTER to choose a level !"
 ATTACK_TIME_MSG     DB      41,"- Attack time ! Press ENTER to continue !"
-VIEW_SHIPS_MSG      DB      97,"- Take a loot at your ships to see the effect of your opponent's attack !"
+VIEW_SHIPS_MSG      DB      97,"- Take a look at your ships to see the effect of your opponent's attack !"
                     DB      " Press ENTER to ATTACK !"
 
 ;---------------- ATTACK -----------------------------------
