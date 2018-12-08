@@ -2,11 +2,19 @@
 ;------------ STATUSBAR MACROS -------------;
 ;-------------------------------------------;
 
-DRAW_STATUS_BAR_TEMPLATE      MACRO     ;DRAWS STATUSBAR WITH DEFAULT PLAYER NAMES                      
+DRAW_STATUS_BAR_TEMPLATE      MACRO     ;DRAWS STATUSBAR WITH DEFAULT PLAYERS NAMES                      
 PUSHA         
 CALL DRAW_STATUS_BAR_TEMPLATE_              
 POPA
 ENDM    DRAW_STATUS_BAR_TEMPLATE
+;------------------------------------------------------------------------;
+DRAW_NOTIFICATION_BAR      MACRO       
+                        
+                        PUSHA
+                        CALL DRAW_NOTIFICATION_BAR_
+                        POPA
+
+ENDM                    DRAW_NOTIFICATION_BAR 
 ;------------------------------------------------------------------------;
 PRINT_NOTIFICATION_MESSAGE      MACRO       STATUS_TEXT, INDEX
                         
@@ -45,8 +53,7 @@ ENDM                    PRINT_PLAYER2_SCORE
 CELLS_SELECTOR	MACRO 	SHIP_SIZE
 PUSHA
 MOV CX,SHIP_SIZE
-CALL CELLS_SELECTOR_
-  
+CALL CELLS_SELECTOR_ 
 POPA
 ENDM			CELLS_SELECTOR
 ;------------------------------------------------------------------------;
@@ -61,4 +68,10 @@ PUSHA
 CALL CALCULATE_SELECTOR_INITIAL_POSITION_
 POPA
 ENDM                    CALCULATE_SELECTOR_INITIAL_POSITION
+;------------------------------------------------------------------------;
+POSSIBLE_ORIENTATIONS_CHECKER      MACRO   
+PUSHA
+CALL POSSIBLE_ORIENTATIONS_CHECKER_
+POPA
+ENDM                    POSSIBLE_ORIENTATIONS_CHECKER
 ;------------------------------------------------------------------------;
