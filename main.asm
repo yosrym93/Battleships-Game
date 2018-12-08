@@ -32,7 +32,11 @@ TO_QUIT_GAME                            DB  28,"- To quit the game press ESC"
 ;---------------- STATUS BAR - ------------------------; 
 SCORE_CONSTANT_TEXT                     DB  10,"'s score: "
 EMPTY_STRING                            DB  100,100 DUP(' ')
-                         
+
+;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
+
+STATUS_TEST1                            DB  35," is a good person and hates oatmeal"
+STATUS_TEST2                            DB  68,"- Please select the orientation of the highlighted ship on the right"                         
 ;---------------- CELLS SELECTOR------------------------;
 SELECTOR_INITIAL_X1                     EQU 20
 SELECTOR_INITIAL_Y1                     EQU 19
@@ -449,6 +453,7 @@ PRINT_POWER_UP_MSG_ ENDP
       
 ACTIVATE_ATTACK_TWICE_POWER_UP_   PROC    NEAR
     MOV IS_ATTACK_TWICE_ACTIVATED  , 1
+    RET
 ACTIVATE_ATTACK_TWICE_POWER_UP_    ENDP
 ;-------------------------------------;
 
@@ -1469,7 +1474,7 @@ MAIN_MENU_     PROC NEAR
         JNZ NOTVALID            
   CONT2:       
   CLEAR_GAME_SCREEN BLACK 
-  PRINT_NOTIFICATION_MESSAGE END_GAME_MSG 2
+  PRINT_NOTIFICATION_MESSAGE END_GAME_MSG, 2
      RET 
 
         HLT
@@ -2061,7 +2066,7 @@ REFRESH_DATA_  PROC NEAR
     MOV CX, 0
     MOV SI, OFFSET P1_SHIPS_POINTS
     MOV DI, OFFSET P2_SHIPS_POINTS
-    MOV BX,N_SHIPS * 4
+    MOV BX, N_SHIPS * 4
     RESET_SHIPS_POSITIONS:
         MOV WORD PTR [SI], -2
         MOV WORD PTR [DI], -2
@@ -2968,7 +2973,6 @@ CLEAR_GRID_   PROC    NEAR
 CLEAR_GRID_   ENDP
 ;-----------------------------------------;    
 STAT_SCREEN_   PROC    NEAR 
-
     DRAW_RECTANGLE 400,70,400,470,WHITE
     ;PLAYER 1 SCORE
     MOV DL,0FH
@@ -2977,7 +2981,6 @@ STAT_SCREEN_   PROC    NEAR
     MOV DH,0FH ;Y
     ADD DL,P1_USERNAME+1  ;X
     PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
-
     ;PLAYER 2 SCORE
     MOV DL,10H    
     PRINT_MESSAGE P2_USERNAME+1,0F40H,0FH
@@ -2986,7 +2989,6 @@ STAT_SCREEN_   PROC    NEAR
     ADD DL,P2_USERNAME+1  ;X
     ADD DL,30H
     PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH 
-
     ;DECIMAL_TO_STRING:
     MOV AX,0
     MOV AL,P1_SCORE
@@ -2996,7 +2998,6 @@ STAT_SCREEN_   PROC    NEAR
     MOV P1_SCORE_STRING+1, AH
     ADD P1_SCORE_STRING,48
     ADD P1_SCORE_STRING+1,48
-
     MOV AX,1301H 
     MOV DH,0FH ;Y
     MOV DL,P1_USERNAME+1 ;X
@@ -3015,7 +3016,6 @@ STAT_SCREEN_   PROC    NEAR
     MOV P2_SCORE_STRING+1, AH
     ADD P2_SCORE_STRING,48
     ADD P2_SCORE_STRING+1,48
-
     MOV AX,1301H
     MOV DH,0FH ;Y
     MOV DL,P2_USERNAME+1 ;X
