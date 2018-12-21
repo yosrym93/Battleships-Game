@@ -101,3 +101,20 @@ CALL EXIT_GAME_
 POPA
 ENDM                    EXIT_GAME
 ;------------------------------------------------------------------------;
+PRINT_CHAT_MESSAGE      MACRO       STATUS_TEXT, INDEX
+                        
+                        PUSHA
+                        MOV AX,1301H
+                        MOV BX,000FH
+                        MOV BP, OFFSET EMPTY_STRING+1
+                        MOV CX,0
+                        MOV CL, EMPTY_STRING
+                        INT 10H
+                        
+                        MOV BX, OFFSET STATUS_TEXT
+                        MOV AL, INDEX
+                        CALL PRINT_CHAT_MESSAGE_
+                        POPA
+
+ENDM                    PRINT_CHAT_MESSAGE
+;------------------------------------------------------------------------;
