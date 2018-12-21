@@ -101,6 +101,8 @@ TO_QUIT_GAME                            DB  28,"- To quit the game press ESC"
 SCORE_CONSTANT_TEXT                     DB  10,"'s score: "
 EMPTY_STRING                            DB  100,100 DUP(' ')
 CONCATENATED_STRING                     DB  100,"- ",98 DUP(' ')
+CHAT_CONSTANT                           DB  1,":"
+ 
 ;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
 
 STATUS_TEST1                            DB  35," is a good person and hates oatmeal"
@@ -2715,7 +2717,13 @@ DRAW_STATUS_BAR_TEMPLATE_   PROC    NEAR
     JNZ LOOP2
 
     PRINT_MESSAGE P1_USERNAME+1,2000H,0FH
+    MOV DH,20H
+    MOV DL,P1_USERNAME+1
+    PRINT_MESSAGE CHAT_CONSTANT,DX,0FH
     PRINT_MESSAGE P2_USERNAME+1,2100H,0FH
+    MOV DH,21H
+    MOV DL,P2_USERNAME+1
+    PRINT_MESSAGE CHAT_CONSTANT,DX,0FH
 ;SCORE BAR                       
     ;PLAYER 1 SCORE
     PRINT_MESSAGE P1_USERNAME+1,1E00H,0FH
@@ -2766,6 +2774,34 @@ PRINT_NOTIFICATION_MESSAGE_   PROC    NEAR
 PRINT_NOTIFICATION_MESSAGE_   ENDP
 ;-----------------------------------------;
 
+PRINT_CHAT_MESSAGE_   PROC    NEAR
+;INDEX = 1 -> PLAYER1 CHAT AREA
+;INDEX = 2 -> PLAYER2 CHAT AREA
+;PRINTS CHAT MESSAGES
+    
+    CMP AL,2
+    JE PLAYER2_CHAT_AREA
+    MOV DH,20H
+    MOV DL,P1_USERNAME+1
+    INC DL ;CONSIDERING EACH NAME HAS ":' AFTER IT
+    JMP PRINT_CHAT_MSG
+PLAYER2_CHAT_AREA:
+    MOV DH,21H
+    MOV DL,P2_USERNAME+1
+    INC DL ;CONSIDERING EACH NAME HAS ":' AFTER IT
+    
+PRINT_CHAT_MSG:
+    MOV AX,1301H
+    MOV BP,BX
+    INC BP
+    MOV CL,[BX]
+    MOV CH,00H
+    MOV BX,000FH
+    INT 10H 
+ 
+    RET
+PRINT_CHAT_MESSAGE_   ENDP
+;-----------------------------------------;
 PRINT_PLAYER1_SCORE_   PROC    NEAR
     
     ;DECIMAL_TO_STRING:
