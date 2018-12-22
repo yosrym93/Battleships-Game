@@ -136,17 +136,24 @@ CALL CHECK_IF_CHAT_KEY_
 POPA
 ENDM                    CHECK_IF_CHAT_KEY
 ;------------------------------------------------------------------------;
-ADD_TO_MSGS_QUEUE  MACRO   PLAYER_INDEX,MESSAGE
-PUSHA
-MOV AH,PLAYER_INDEX
-MOV BP, OFFSET MESSAGE
-CALL ADD_TO_MSGS_QUEUE_
-POPA
-ENDM                    ADD_TO_MSGS_QUEUE
+; ADD_TO_MSGS_QUEUE  MACRO   PLAYER_INDEX,MESSAGE
+; PUSHA
+; MOV AH,PLAYER_INDEX
+; MOV BP, OFFSET MESSAGE
+; CALL ADD_TO_MSGS_QUEUE_
+; POPA
+; ENDM                    ADD_TO_MSGS_QUEUE
 ;------------------------------------------------------------------------;
-PRINT_MSGS_QUEUE  MACRO
+; PRINT_MSGS_QUEUE  MACRO
+; PUSHA
+; CALL PRINT_MSGS_QUEUE_
+; POPA
+; ENDM                    PRINT_MSGS_QUEUE
+;------------------------------------------------------------------------;
+SCROLL_UP  MACRO       LINES  
 PUSHA
-CALL PRINT_MSGS_QUEUE_
+MOV AL,LINES
+CALL SCROLL_UP_
 POPA
-ENDM                    PRINT_MSGS_QUEUE
+ENDM                    SCROLL_UP
 ;------------------------------------------------------------------------;

@@ -106,21 +106,21 @@ CHAT_CONSTANT2                          DB  2,"- "
 ;---------------- STANDALONE CHAT MODE ------------------------; 
 PLACE_TO_PRINT_NEXT_MSG                 DW  ?
 TYPE_HERE_MSG                           DB  12,"- Type here:"
-MESSAGES_QUEUE                          DB  0,0,100,100 DUP(' ') ;Player Index,Has msg,Size,Message
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')
-                                        DB  0,0,100,100 DUP(' ')                                        
+;MESSAGES_QUEUE                          DB  0,0,100,100 DUP(' ') ;Player Index,Has msg,Size,Message
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')
+;                                        DB  0,0,100,100 DUP(' ')                                        
 ;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
 
 STATUS_TEST1                            DB  35," is a good person and hates oatmeal"
@@ -3838,7 +3838,6 @@ STANDALONE_CHAT_MODE_START:
     INT 16H
     
     JZ CHECK_IF_MSG_RECEIVED
-    PRINT_MSGS_QUEUE
     MOV AH,0
     INT 16H
     
@@ -3864,9 +3863,22 @@ SEND_CHAT_MSG:
     CMP SEND_DATA_BUFFER,0
     JE CHECK_IF_MSG_RECEIVED
     PRINT_MESSAGE EMPTY_STRING,2100H,000FH
-    ADD_TO_MSGS_QUEUE 1,SEND_DATA_BUFFER
+    MOV DX,PLACE_TO_PRINT_NEXT_MSG
+    PRINT_MESSAGE CHAT_CONSTANT2,DX,0FF02H
+    ADD DL,2
+    PRINT_MESSAGE P1_USERNAME+1,DX,0FF02H
+    ADD DL,P1_USERNAME+1
+    PRINT_MESSAGE CHAT_CONSTANT,DX,0FF02H
+    ADD DL,2
+    PRINT_MESSAGE SEND_DATA_BUFFER,DX,000FH
+    ADD PLACE_TO_PRINT_NEXT_MSG,0200H 
+    
+    CMP PLACE_TO_PRINT_NEXT_MSG,2300H
+    JNE SEND_CONTINUE
+    MOV PLACE_TO_PRINT_NEXT_MSG,1200H
+    ;----------ADD SCROLL UP--------------
+SEND_CONTINUE:    
     SEND_DATA DATA_BUFFER_INDEX
-    PRINT_MSGS_QUEUE
     JMP CHECK_IF_MSG_RECEIVED 
     
 ADD_BYTE_TO_BUFFER:    
@@ -3879,8 +3891,20 @@ CHECK_IF_MSG_RECEIVED:
     RECEIVE_DATA
     CMP RECEIVE_DATA_BUFFER,0
     JE STANDALONE_CHAT_MODE_START
-    ADD_TO_MSGS_QUEUE 2,RECEIVE_DATA_BUFFER
-    PRINT_MSGS_QUEUE
+    MOV DX,PLACE_TO_PRINT_NEXT_MSG
+    PRINT_MESSAGE CHAT_CONSTANT2,DX,0FF03H
+    ADD DL,2
+    PRINT_MESSAGE P2_USERNAME+1,DX,0FF03H
+    ADD DL,P2_USERNAME+1
+    PRINT_MESSAGE CHAT_CONSTANT,DX,0FF03H
+    ADD DL,2
+    PRINT_MESSAGE RECEIVE_DATA_BUFFER,DX,000FH
+    ADD PLACE_TO_PRINT_NEXT_MSG,0200H 
+    
+    CMP PLACE_TO_PRINT_NEXT_MSG,2300H
+    JNE STANDALONE_CHAT_MODE_START
+    MOV PLACE_TO_PRINT_NEXT_MSG,1200H
+    ;----------ADD SCROLL UP--------------
     JMP STANDALONE_CHAT_MODE_START
 
     RET
@@ -3930,30 +3954,30 @@ REMOVE_BYTE_FROM_SEND_BUFFER_   PROC    NEAR
     RET
 REMOVE_BYTE_FROM_SEND_BUFFER_   ENDP
 ;-----------------------------------------;
-ADD_TO_MSGS_QUEUE_   PROC    NEAR
-    ; PARAMETERS
-    ; AH -> PLAYRE INDEX
-    ; BP -> OFFSET MESSAGE
-    MOV CX,15
-    MOV BX,0
-SEARCH_FOR_EMPTY_PLACE:    
-    CMP MESSAGES_QUEUE[BX+1],0
-    JE FOUND_EMPTY_PLACE
-    ADD BX,103
-    CMP BX,1545
-    JNE SEARCH_FOR_EMPTY_PLACE
-    ;JMP NO_EMPTY_PLACE
-    
-FOUND_EMPTY_PLACE:
-    MOV SI,BP
-    MOV DI,OFFSET MESSAGES_QUEUE[BX+2]
-    MOV MESSAGES_QUEUE[BX],AH
-    MOV MESSAGES_QUEUE[BX+1],1
-    MOV CX,101
-    REP MOVSB
-    PRINT_NOTIFICATION_MESSAGE STATUS_TEST1,1
-    RET
-    
+;ADD_TO_MSGS_QUEUE_   PROC    NEAR
+;    ; PARAMETERS
+;    ; AH -> PLAYRE INDEX
+;    ; BP -> OFFSET MESSAGE
+;    MOV CX,15
+;    MOV BX,0
+;SEARCH_FOR_EMPTY_PLACE:    
+;    CMP MESSAGES_QUEUE[BX+1],0
+;    JE FOUND_EMPTY_PLACE
+;    ADD BX,103
+;    CMP BX,1545
+;    JNE SEARCH_FOR_EMPTY_PLACE
+;    JMP NO_EMPTY_PLACE
+;    
+;FOUND_EMPTY_PLACE:
+;    MOV SI,BP
+;    MOV DI,OFFSET MESSAGES_QUEUE[BX+2]
+;    MOV MESSAGES_QUEUE[BX],AH
+;    MOV MESSAGES_QUEUE[BX+1],1
+;    MOV CX,101
+;    REP MOVSB
+;    PRINT_NOTIFICATION_MESSAGE STATUS_TEST1,1
+;    RET
+;    
 ;NO_EMPTY_PLACE:
 ;    PRINT_NOTIFICATION_MESSAGE STATUS_TEST1,1
 ;    MOV BX,0
@@ -3973,53 +3997,64 @@ FOUND_EMPTY_PLACE:
 ;    MOV MESSAGES_QUEUE[BX],AH
 ;    MOV CX,101
 ;    REP MOVSB
-      
+;      
 ;    RET
-ADD_TO_MSGS_QUEUE_   ENDP
+;ADD_TO_MSGS_QUEUE_   ENDP
+;;-----------------------------------------;
+;PRINT_MSGS_QUEUE_   PROC    NEAR
+;
+;    MOV BX,0
+;    MOV PLACE_TO_PRINT_NEXT_MSG,0100H
+;    
+;PRINT_NEXT_MSG:
+;    CMP MESSAGES_QUEUE[BX+1],0
+;    JE CLOSE_PRINT_MSGS_QUEUE    
+;    CMP MESSAGES_QUEUE[BX],2
+;    JE PLAYER2_PRINT_MSG
+;    
+;    MOV DX,PLACE_TO_PRINT_NEXT_MSG
+;    PRINT_MESSAGE EMPTY_STRING,PLACE_TO_PRINT_NEXT_MSG,000FH
+;    PRINT_MESSAGE CHAT_CONSTANT2,DX,0FF02H
+;    ADD DL,2
+;    PRINT_MESSAGE P1_USERNAME+1,DX,0FF02H
+;    ADD DL,P1_USERNAME+1
+;    PRINT_MESSAGE CHAT_CONSTANT,DX,0FF02H
+;    ADD DL,2
+;    PRINT_MESSAGE MESSAGES_QUEUE[BX+2],DX,000FH
+;    ADD PLACE_TO_PRINT_NEXT_MSG,0200H 
+;    
+;    ADD BX,103
+;    CMP BX,1545
+;    JNE PRINT_NEXT_MSG
+;    RET
+;    
+;PLAYER2_PRINT_MSG:
+;    MOV DX,PLACE_TO_PRINT_NEXT_MSG
+;    PRINT_MESSAGE EMPTY_STRING,PLACE_TO_PRINT_NEXT_MSG,000FH
+;    PRINT_MESSAGE CHAT_CONSTANT2,DX,0FF03H
+;    ADD DL,2
+;    PRINT_MESSAGE P2_USERNAME+1,DX,0FF03H
+;    ADD DL,P2_USERNAME+1
+;    PRINT_MESSAGE CHAT_CONSTANT,DX,0FF03H
+;    ADD DL,2
+;    PRINT_MESSAGE MESSAGES_QUEUE[BX+2],DX,000FH
+;    ADD PLACE_TO_PRINT_NEXT_MSG,0200H
+;    ADD BX,103
+;    CMP BX,1545
+;    JNE PRINT_NEXT_MSG
+;CLOSE_PRINT_MSGS_QUEUE:    
+;    RET
+;PRINT_MSGS_QUEUE_   ENDP
 ;-----------------------------------------;
-PRINT_MSGS_QUEUE_   PROC    NEAR
-
-    MOV BX,0
-    MOV PLACE_TO_PRINT_NEXT_MSG,0100H
-    
-PRINT_NEXT_MSG:
-    CMP MESSAGES_QUEUE[BX+1],0
-    JE CLOSE_PRINT_MSGS_QUEUE    
-    CMP MESSAGES_QUEUE[BX],2
-    JE PLAYER2_PRINT_MSG
-    
-    MOV DX,PLACE_TO_PRINT_NEXT_MSG
-    PRINT_MESSAGE EMPTY_STRING,PLACE_TO_PRINT_NEXT_MSG,000FH
-    PRINT_MESSAGE CHAT_CONSTANT2,DX,0FF02H
-    ADD DL,2
-    PRINT_MESSAGE P1_USERNAME+1,DX,0FF02H
-    ADD DL,P1_USERNAME+1
-    PRINT_MESSAGE CHAT_CONSTANT,DX,0FF02H
-    ADD DL,2
-    PRINT_MESSAGE MESSAGES_QUEUE[BX+2],DX,000FH
-    ADD PLACE_TO_PRINT_NEXT_MSG,0200H 
-    
-    ADD BX,103
-    CMP BX,1545
-    JNE PRINT_NEXT_MSG
+SCROLL_UP_   PROC    NEAR
+    ; PARAMETERS
+    ; AL -> NUMBER OF LINES
+    XOR  DX, DX     ; DL ==  0, DH ==  0
+    MOV  CX, 0421EH  
+    MOV  AH, 06H    ; AH == 06H
+    MOV  BH, 0FH    ; WHITE FOREGROUND, BLACK BACKGROUND
+    INT  10H    
     RET
-    
-PLAYER2_PRINT_MSG:
-    MOV DX,PLACE_TO_PRINT_NEXT_MSG
-    PRINT_MESSAGE EMPTY_STRING,PLACE_TO_PRINT_NEXT_MSG,000FH
-    PRINT_MESSAGE CHAT_CONSTANT2,DX,0FF03H
-    ADD DL,2
-    PRINT_MESSAGE P2_USERNAME+1,DX,0FF03H
-    ADD DL,P2_USERNAME+1
-    PRINT_MESSAGE CHAT_CONSTANT,DX,0FF03H
-    ADD DL,2
-    PRINT_MESSAGE MESSAGES_QUEUE[BX+2],DX,000FH
-    ADD PLACE_TO_PRINT_NEXT_MSG,0200H
-    ADD BX,103
-    CMP BX,1545
-    JNE PRINT_NEXT_MSG
-CLOSE_PRINT_MSGS_QUEUE:    
-    RET
-PRINT_MSGS_QUEUE_   ENDP
+SCROLL_UP_   ENDP
 ;-----------------------------------------;
 END     MAIN
