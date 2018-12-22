@@ -33,15 +33,15 @@ PRINT_NOTIFICATION_MESSAGE      MACRO       STATUS_TEXT, INDEX
 
 ENDM                    PRINT_NOTIFICATION_MESSAGE 
 ;------------------------------------------------------------------------;
-PRINT_PLAYER1_SCORE     MACRO  
+PRINT_MY_SCORE     MACRO  
 PUSHA                        
-CALL PRINT_PLAYER1_SCORE_
+CALL PRINT_MY_SCORE_
 POPA                       
 ENDM                    PRINT_PLAYER1_SCORE 
 ;------------------------------------------------------------------------;
-PRINT_PLAYER2_SCORE     MACRO  
+PRINT_OTHER_PLAYER_SCORE     MACRO  
 PUSHA                        
-CALL PRINT_PLAYER2_SCORE_
+CALL PRINT_OTHER_PLAYER_SCORE_
 POPA                       
 ENDM                    PRINT_PLAYER2_SCORE 
 ;------------------------------------------------------------------------;
@@ -101,3 +101,20 @@ CALL EXIT_GAME_
 POPA
 ENDM                    EXIT_GAME
 ;------------------------------------------------------------------------;
+PRINT_CHAT_MESSAGE      MACRO       STATUS_TEXT, INDEX
+                        
+                        PUSHA
+                        MOV AX,1301H
+                        MOV BX,000FH
+                        MOV BP, OFFSET EMPTY_STRING+1
+                        MOV CX,0
+                        MOV CL, EMPTY_STRING
+                        INT 10H
+                        
+                        MOV BX, OFFSET STATUS_TEXT
+                        MOV AL, INDEX
+                        CALL PRINT_CHAT_MESSAGE_
+                        POPA
+
+ENDM                    PRINT_CHAT_MESSAGE
+;------------------------------------------------------------------------; 

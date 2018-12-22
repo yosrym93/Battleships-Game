@@ -23,9 +23,8 @@ CLEAR_SCREEN	MACRO
       POPA
 ENDM CLEARSCREEN 
 ;-------------------------------------------------------------------;
-GET_USER_NAME MACRO PLAYER_INDEX ,USER_NAME
+GET_USER_NAME MACRO USER_NAME
       PUSHA
-      MOV SI, PLAYER_INDEX
       MOV DI, OFFSET USER_NAME
       CALL GET_USER_NAME_
       POPA
@@ -65,16 +64,14 @@ PIXELS_TO_GRID MACRO  PixelX, PixelY, GridX, GridY
       POPA
 ENDM PIXELS_TO_GRID
 ;-------------------------------------------------------------------; 
-Draw_All_Ships_ON_GRID MACRO PLAYER_NUMBER
+Draw_All_Ships_ON_GRID MACRO 
 PUSHA
-MOV AL, PLAYER_NUMBER
 CALL Draw_All_Ships_ON_GRID_
 POPA
 ENDM Draw_All_Ships_ON_GRID
 ;-------------------------------------------------------------------; 
-DRAW_ALL_DESTROYED_SHIPS MACRO PLAYER_NUMBER
+DRAW_ALL_DESTROYED_SHIPS MACRO 
 PUSHA
-MOV AL, PLAYER_NUMBER
 CALL DRAW_ALL_DESTROYED_SHIPS_
 POPA
 ENDM DRAW_ALL_DESTROYED_SHIPS
@@ -98,20 +95,18 @@ CALL  Draw_All_X_Signs_
 POPA
 ENDM Draw_All_X_Signs
 ;-------------------------------------------------------------------; 
- CELL_HAS_SHIP MACRO GRIDX_ ,GRIDY_ ,ATTACKED_PLAYER
+ CELL_HAS_SHIP MACRO GRIDX_ ,GRIDY_ 
 PUSHA
 MOV AX, GRIDX_
 MOV GRID1_X, AX
 MOV AX, GRIDY_
 MOV GRID1_Y, AX
-Mov Al,ATTACKED_PLAYER
 CALL  CELL_HAS_SHIP_
 POPA
 ENDM  CELL_HAS_SHIP
 ;-------------------------------------------------------------------; 
-Is_Cell_Attacked_Before MACRO PLAYER_WHO_ATTACKS
+Is_Cell_Attacked_Before MACRO 
 PUSHA
-Mov Al,PLAYER_WHO_ATTACKS
 CALL Is_CELL_Attacked_Before_
 POPA
 ENDM Is_CELL_Attacked_Before
@@ -122,15 +117,21 @@ CALL Update_ATTACKS_DATA_
 POPA
 ENDM Update_ATTACKS_DATA
 ;-------------------------------------------------------------------; 
-CHECK_CELL_AND_Update_ATTACKS_DATA MACRO 
+ATTACKED_CHECK_CELL_AND_Update_ATTACKS_DATA MACRO 
 PUSHA
-CALL CHECK_CELL_AND_Update_ATTACKS_DATA_
+CALL ATTACKED_CHECK_CELL_AND_Update_ATTACKS_DATA_
 POPA
-ENDM CHECK_CELL_AND_Update_ATTACKS_DATA
+ENDM ATTACKED_CHECK_CELL_AND_Update_ATTACKS_DATA
+;-------------------------------------------------------------------; 
+ATTACKER_Update_ATTACKS_DATA MACRO 
+PUSHA
+CALL ATTACKER_Update_ATTACKS_DATA_
+POPA
+ENDM ATTACKER_Update_ATTACKS_DATA
 ;-------------------------------------------------------------------; 
 Get_CELL_FROM_PLAYER MACRO GRIDX_,GRIDY_
 PUSHA
-Mov SI, offset GRIDX_
+MOV SI, offset GRIDX_
 MOV DI,offset GRIDY_
 CALL Get_CELL_FROM_PLAYER_
 POPA
@@ -166,24 +167,100 @@ CALL SCENE2_PLAYER_WATCHES_
 POPA
 ENDM SCENE2_PLAYER_WATCHES	
 ;-------------------------------------------------------------------; 
-ACTIVATE_ATTACK_TWICE_POWER_UP MACRO
+MY_ATTACK_TWICE_POWER_UP_ACTIVATED MACRO
 PUSHA
-CALL ACTIVATE_ATTACK_TWICE_POWER_UP_
+CALL MY_ATTACK_TWICE_POWER_UP_ACTIVATED_
 POPA
-ENDM ACTIVATE_ATTACK_TWICE_POWER_UP
+ENDM MY_ATTACK_TWICE_POWER_UP_ACTIVATED
 ;-------------------------------------------------------------------; 
- ACTIVATE_DESTROY_RANDOM_POWER_UP MACRO
+OTHER_PLAYER_ATTACK_TWICE_POWER_UP_ACTIVATED MACRO
 PUSHA
-CALL ACTIVATE_DESTROY_RANDOM_POWER_UP_ 
+CALL OTHER_PLAYER_ATTACK_TWICE_POWER_UP_ACTIVATED_
 POPA
- ENDM ACTIVATE_DESTROY_RANDOM_POWER_UP
+ENDM OTHER_PLAYER_ATTACK_TWICE_POWER_UP_ACTIVATED
 ;-------------------------------------------------------------------; 
-STARTING_PAGE 	MACRO	
-
+DESTROY_RANDOM_SHIP_POWER_UP_ACTIVATED MACRO
 PUSHA
-
+CALL DESTROY_RANDOM_SHIP_POWER_UP_ACTIVATED_
+POPA
+ ENDM DESTROY_RANDOM_SHIP_POWER_UP_ACTIVATED
+;-------------------------------------------------------------------; 
+CHOOSE_SHIP_AND_DESTROY_IT MACRO
+PUSHA
+CALL CHOOSE_SHIP_AND_DESTROY_IT_
+POPA
+ENDM CHOOSE_SHIP_AND_DESTROY_IT
+;-------------------------------------------------------------------; 
+STARTING_PAGE MACRO
+PUSHA
 CALL STARTING_PAGE_ 
-
 POPA
- 
-ENDM STARTING_PAGE
+ ENDM STARTING_PAGE
+;-------------------------------------------------------------------; 
+WAIT_FOR_KEY MACRO
+PUSHA
+CALL WAIT_FOR_KEY_
+POPA
+ENDM  WAIT_FOR_KEY
+;-------------------------------------------------------------------; 
+SEND_ATTACK_COORD MACRO
+PUSHA
+CALL SEND_ATTACK_COORD_
+POPA
+ENDM  SEND_ATTACK_COORD
+;-------------------------------------------------------------------; 
+RECEIEVE_ATTACK_COORD MACRO
+PUSHA
+CALL RECEIEVE_ATTACK_COORD_
+POPA
+ENDM  RECEIEVE_ATTACK_COORD
+;------------------------------------------------------------------; 
+SEND_ATTACK_RESULT MACRO
+PUSHA
+CALL SEND_ATTACK_RESULT_
+POPA
+ENDM  SEND_ATTACK_RESULT
+;-------------------------------------------------------------------; 
+RECEIEVE_ATTACK_RESULT MACRO
+PUSHA
+CALL RECEIEVE_ATTACK_RESULT_
+POPA
+ENDM  RECEIEVE_ATTACK_RESULT
+;-------------------------------------------------------------------; 
+MOVE_TO_NEXT_SCENE MACRO
+PUSHA
+CALL MOVE_TO_NEXT_SCENE_
+POPA
+ENDM  MOVE_TO_NEXT_SCENE
+;------------------------------------------------------------------; 
+SEND_POWER_UP_ACTIVATION MACRO POWER_UP_CODE_
+PUSHA
+MOV AL, POWER_UP_CODE_
+CALL SEND_POWER_UP_ACTIVATION_
+POPA
+ENDM SEND_POWER_UP_ACTIVATION
+;-------------------------------------------------------------------; 
+ACTIVATE_OTHER_PLAYER_POWER_UP MACRO 
+PUSHA
+CALL ACTIVATE_OTHER_PLAYER_POWER_UP_
+POPA
+ENDM ACTIVATE_OTHER_PLAYER_POWER_UP
+;-------------------------------------------------------------------; 
+UPDATE_OTHER_PLAYER_RANDOM_DESTROYED_SHIP MACRO
+PUSHA
+CALL UPDATE_OTHER_PLAYER_RANDOM_DESTROYED_SHIP_
+POPA
+ENDM UPDATE_OTHER_PLAYER_RANDOM_DESTROYED_SHIP
+;-------------------------------------------------------------------; 
+RECEIEVE_DESTROYED_SHIP_POWER_UP_RESULT MACRO 
+PUSHA
+CALL RECEIEVE_DESTROYED_SHIP_POWER_UP_RESULT_
+POPA
+ENDM RECEIEVE_DESTROYED_SHIP_POWER_UP_RESULT 
+;-------------------------------------------------------------------; 
+SEND_DESTROYED_SHIP_POWER_UP_RESULT MACRO 
+PUSHA
+CALL SEND_DESTROYED_SHIP_POWER_UP_RESULT_
+POPA
+ENDM SEND_DESTROYED_SHIP_POWER_UP_RESULT
+;-------------------------------------------------------------------; 

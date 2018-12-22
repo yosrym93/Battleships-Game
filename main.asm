@@ -5,20 +5,79 @@ INCLUDE NADER.INC
 .386
 .STACK 64
 .DATA
+;-------------------- MY GARABAGE ----------------------
+ATTACK_COORD_CODE               EQU 1
+ATTACK_RESULT_CODE              EQU 2
+MOVE_TO_NEXT_SCENE_CODE         EQU 3
+MOVE_TO_GAME_SCENE_CODE         EQU 4
+POWER_UP_ACTIVATION_CODE        EQU 5
+ATTACK_TWICE_CODE               EQU 6
+REVERSE_ATTACK_CODE             EQU 7
+DESTROY_RANDOM_SHIP_CODE        EQU 8
+DESTROY_RANDOM_SHIP_RESULT_CODE EQU 9
+END_CODE                        EQU 33
+KEY_PRESSED                     DB  ?
+WAIT_FOR_THE_OTHER_PLAYER_MSG   DB  43,"Please wait the other player to press ENTER" 
+MY_INDEX                        DB  1
+OTHER_PLAYER_INDEX              DB  2
+WAIT_TO_RECEIEVE_ATTACK_COORD   DB  28,"WAIT TO RECEIEVE ATTACK COORD"
+WAIT_TO_RECEIEVE_ATTACK_RESULT   DB  29,"WAIT TO RECEIEVE ATTACK RESULT"
+ATTACKX_STRING        DB  2,?,?
+ATTACKY_STRING        DB  1,?
 
+
+;---------------- INVITATIONS ---------------------------
+GAME_MODE                       DB  0
+PLAY_MODE                       EQU 1
+CHAT_MODE                       EQU 2
+IS_HOST                         DB  ?
+GAME_INVITATION_CODE            EQU 0FFH
+CHAT_INVITATION_CODE            EQU 0FEH
+CANCEL_INVITATION_CODE          EQU 0FDH
+ACCEPT_INVITATION_CODE          EQU 0FCH
+REJECT_INVITATION_CODE          EQU 0FBH
+LEVEL1_CODE                     EQU 0F9H
+LEVEL2_CODE                     EQU 0FAH    ; LEVEL2 CODE MUST ALWAYS BE HIGHER THAN LEVEL 1 CODE BY 1
+START_CHAT_CODE                 EQU 0F8H
+END_CHAT_CODE                   EQU 0F7H
+USERNAME_CODE                   EQU 0F6H
+REQUEST_TO_SEND_CODE            EQU 0F5H
+READY_TO_RECEIVE_CODE           EQU 0F4H
+ALL_DATA_SENT_CODE              EQU 0F3H
+BYTE_RECEIVED_CODE              EQU 0F2H
+DUMMY_COUNTER                   DB  ?
+SEND_GAME_INVITATION_MSG        DB  38,'- To send a game invitation press F2 -' 
+SEND_CHAT_INVITATION_MSG        DB  38,'- To send a chat invitation press F3 -'
+RECEIVED_GAME_INVITATION_MSG    DB  80,'- You have received a game invitaiton, press ENTER to accept or SPACE to decline'
+RECEIVED_CHAT_INVITATION_MSG    DB  80,'- You have received a chat invitaiton, press ENTER to accept or SPACE to decline'
+YOU_CANCELLED_MSG               DB  39,'- You cancelled the invitation you sent'
+INVITATION_ACCEPTED_MSG         DB  52,'- Your invitation was accepted, press ENTER to start'
+INVITATION_REJECTED_MSG         DB  30,'- Your invitation was rejected'
+INVITATION_CANCELLED_MSG        DB  43,'- The invitation you received was cancelled'
+YOU_ACCEPTED_MSG                DB  51,'- You accepted the invitation, press ENTER to start'
+YOU_REJECTED_MSG                DB  29,'- You rejected the invitation'
+SENT_GAME_INVITATION_MSG        DB  66,'- You sent a game invitation, press SPACE to cancel the invitation'
+SENT_CHAT_INVITATION_MSG        DB  66,'- You sent a chat invitation, press SPACE to cancel the invitation'
+HOST_CHOOSING_LEVEL             DB  44,'- Please wait while the host chooses a level'
+WAITING_FOR_USERNAME            DB  45,'- Waiting for Player 2 to send their username'
 
 ;---------------- BUFFERS -------------------------------
 ; FIRST BYTE OF ANY BUFFER -> SIZE OF DATA CURRENTLY IN THE BUFFER
 ; BUFFERS SIZE NEEDS TO BE CHECKED
+DATA_BUFFER_INDEX        EQU 1
+CHAT_BUFFER_INDEX        EQU 2
+BUFFER_SIZE              EQU 100
+SEND_DATA_BUFFER_FULL    DB  0
+SEND_CHAT_BUFFER_FULL    DB  0
 SERIAL_BYTE              DB  ?               
 DATA_RECEIVED_FLAG       DB  0
-SEND_DATA_BUFFER         DB  100 DUP(?) 
+SEND_DATA_BUFFER         DB  BUFFER_SIZE DUP(?) 
 SEND_DATA_BUFFER_PTR     DW  ?          ; POINTS TO THE FIRST EMPTY BYTE IN THE SEND_DATA_BUFFER (CONTAINS THE OFFSET)
-RECEIVE_DATA_BUFFER      DB  100 DUP(?)
-SEND_CHAT_BUFFER         DB  100 DUP(?)
+RECEIVE_DATA_BUFFER      DB  BUFFER_SIZE DUP(?)
+SEND_CHAT_BUFFER         DB  BUFFER_SIZE DUP(?)
 SEND_CHAT_BUFFER_PTR     DW  ?          ; POINTS TO THE FIRST EMPTY BYTE IN THE SEND_CHAT_BUFFER (CONTAINS THE OFFSET)
-RECEIVE_CHAT_BUFFER      DB  100 DUP(?)
-
+RECEIVE_CHAT_BUFFER      DB  BUFFER_SIZE DUP(?)
+BUFFER_INDEX             DB  ?
 
 ;---------------- STARTING PAGE -------------------------
 WELCOME_MSG                 DB   24,'Welcome To Battleships !'
@@ -29,7 +88,7 @@ SPACE_MSG                   DB   47,'SPACE: To select a column or control the sl
 ENTER_MSG                   DB   37,'ENTER: To move throughout game stages'
 
 ;---------------- GENERAL MESSAGES -------------------------
-PLAYER_TURN         DB      35,"'s turn ! Press ENTER to continue !"
+PLAYER_TURN         DB      34,"'s turn ! Wait for him to attack !"
 CHOOSE_LEVEL_MSG    DB      33,"- Press ENTER to choose a level !"
 ATTACK_TIME_MSG     DB      41,"- Attack time ! Press ENTER to continue !"
 VIEW_SHIPS_MSG      DB      97,"- Take a look at your ships to see the effect of your opponent's attack !"
@@ -39,16 +98,22 @@ VIEW_SHIPS_MSG      DB      97,"- Take a look at your ships to see the effect of
 SELECT_ATTACK_COLUMN_MSG                DB  84,"- Navigate through columns and press SPACE "
                                         DB  "to select the column of the attacked cell"
 FIRE_SLIDER_MSG                         DB  64,"- Press SPACE to stop the slider at the row of the attacked cell"
-CELL_ALREADY_ATTACKED_MSG               DB  81,"- You attacked the cell that you already attacked before! Press ENTER to continue"
-GRID_MISSED_MSG                         DB  47,"- You missed the grid ! Press ENTER to continue"
-ON_TARGET_MSG                           DB  61,"- Your attack hit a ship ! Good job ! Press ENTER to continue"
-NOT_ON_TARGET_MSG                       DB  69,"- Your attack didn't hit a ship ! Hard Luck ! Press ENTER to continue"
+CELL_ALREADY_ATTACKED_MSG_ATTACKER      DB  81,"- You attacked the cell that you already attacked before! Press ENTER to continue"
+GRID_MISSED_MSG_ATTACKER                DB  47,"- You missed the grid ! Press ENTER to continue"
+ON_TARGET_MSG_ATTACKER                  DB  61,"- Your attack hit a ship ! Good job ! Press ENTER to continue"
+NOT_ON_TARGET_MSG_ATTACKER              DB  69,"- Your attack didn't hit a ship ! Hard Luck ! Press ENTER to continue"
+
+CELL_ALREADY_ATTACKED_MSG_ATTACKED      DB  92,"- The other player attacked a cell that he already attacked before ! Press ENTER to continue"
+GRID_MISSED_MSG_ATTACKED                DB  60,"- The other player missed the grid ! Press ENTER to continue"
+ON_TARGET_MSG_ATTACKED                  DB  76,"- The other player's attack hit a ship ! Hard Luck ! Press ENTER to continue"
+NOT_ON_TARGET_MSG_ATTACKED              DB  83,"- The other player's attack didn't hit a ship ! Good Luck ! Press ENTER to continue"
+
 ATTACKX                                 DW ?        
 ATTACKY                                 DW ?               
 IS_EVEN                                 DB ?
-IS_ONTARGET                             DB ?
-IS_ATTACKED_BEFORE                      DB ?
-IS_ON_GRID                              DB ?
+IS_ONTARGET                             DB 0
+IS_ATTACKED_BEFORE                      DB 0
+IS_ON_GRID                              DB 1
 PLAYER_ATTACKING                        DB 1
 PLAYER_ATTACKED                         DB 2
 GAME_END                                DB 0
@@ -62,6 +127,7 @@ TO_QUIT_GAME                            DB  28,"- To quit the game press ESC"
 SCORE_CONSTANT_TEXT                     DB  10,"'s score: "
 EMPTY_STRING                            DB  100,100 DUP(' ')
 CONCATENATED_STRING                     DB  100,"- ",98 DUP(' ')
+CHAT_CONSTANT                           DB  1,":"
 ;----------------------- NADER (EXPERIMENTAL) - ------------------------; 
 
 STATUS_TEST1                            DB  35," is a good person and hates oatmeal"
@@ -159,6 +225,7 @@ SLIDER_MAX_DOWN     EQU 473
 ;---------------- KEY SCAN CODES ------------------------------- DONE
 SPACE_SCANCODE      EQU 39H
 F2_SCANCODE         EQU 3CH
+F3_SCANCODE         EQU 3DH
 EXIT_SCANCODE       EQU 01H
 ENTER_SCANCODE      EQU 1CH
 UP_SCANCODE         EQU 48H
@@ -187,14 +254,14 @@ POWER_UPS_CARD2_Y2               EQU  POWER_UPS_CARD2_Y1 + POWER_UPS_CARD_HEIGHT
 POWER_UPS_CARD3_Y1               EQU  POWER_UPS_CARD2_Y1 +  POWER_UPS_CARD_HEIGHT + POWER_UPS_CARD_MARGIN + 4  
 POWER_UPS_CARD3_Y2               EQU  POWER_UPS_CARD3_Y1 + POWER_UPS_CARD_HEIGHT - 1
 TEMP                             DW   ?
-P1_IS_USED                       DB   0, 0, 0
-P2_IS_USED                       DB   0, 0, 0
-P1_N_AVAILABLE_POWER_UPS         DB   3
-P2_N_AVAILABLE_POWER_UPS         DB   3
-IS_ATTACK_TWICE_ACTIVATED        DB   0
-IS_REVERSE_ATTACK_ACTIVATED      DB   0
-IS_REVERSE_COUNT                 DB   0
-IS_DESTROY_SHIP_ACTIVATED        DB   0
+MY_POWER_UPS_IS_USED             DB   0, 0, 0
+MY_N_AVAILABLE_POWER_UPS         DB   3
+IS_MY_ATTACK_TWICE_ACTIVATED     DB   0
+IS_MY_REVERSE_ATTACK_ACTIVATED   DB   0
+IS_MY_DESTROY_SHIP_ACTIVATED     DB   0
+IS_OTHER_PLAYER_ATTACK_TWICE_ACTIVATED        DB   0
+IS_OTHER_PLAYER_REVERSE_ATTACK_ACTIVATED      DB   0
+IS_OTHER_PLAYER_DESTROY_SHIP_ACTIVATED        DB   0
 RANDOM_SHIP                      DB   ?
 RANDOM_PLAYER                    DB   ?
 RANDOM_NUMBER                    DB   ?
@@ -206,7 +273,7 @@ REVERSE_A_REVERSED_ATTACK_MSG    DB   98,"- You and your opponent tried to rever
                                  DB   "All reverses cancelled !"
 YOUR_ATTACK_WAS_REVERSED_MSG     DB   100,"- Looks like your opponent reversed your attack towards your ships !"
                                  DB   " Press ENTER to see the damage !"
-POWER_UPS_CURRENT_PLAYER         DB   ? 
+OTHER_PLAYER_ACTIVATE_ATTACK_TWICE_MSG  DB  47,"The other player activate attack twice power up"                                    
 POWER_UP_INDEX                   DB   ?
 
 ;---------------- MAIN MENU MESSAGES DATA FOR THE USER ------------  DONE
@@ -216,7 +283,7 @@ PLAYER2_MSG                 DB    8H ,'Player 2'
 PRESS_ENTER_MSG             DB    1DH,'- Press ENTER key to continue' 
 TO_START_GAME_MSG           DB    1CH,'- To start the game press F2'
 ENTER_LEVEL_MSG             DB    1EH,'- Choose the game level 1 or 2'
-TO_END_PROG_MSG             DB    1EH,'- To end the program press ESC'
+TO_END_PROG_MSG             DB    20H,'- To end the program press ESC -'
 END_GAME_MSG                DB     27,"- To end the game press ESC"
 ;---------------- COMMON DATA FOR BOTH PLAYERS -------------------
 LEVEL                   DB     1
@@ -228,50 +295,52 @@ MSG_Dash                DB     1,'-'
 N_SHIPS          EQU 10         ; PLAYER 1 NUMBER OF SHIPS
 TOTAL_N_CELLS    EQU 32
 
-;---------------- PLAYER 1 DATA ----------------------------------
-P1_USERNAME         DB  16, ?, 16 DUP ('?')
-P1_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
-P1_SCORE_STRING                         DB  2 DUP(?)
+;---------------- MY DATA ----------------------------------
+My_USERNAME         DB  16, ?, 16 DUP ('?')
+MY_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+MY_SCORE_STRING                         DB  2 DUP(?)
 
 ;-------- P1 ATTACKS ---------------------------------------------
 ;GRID CELLS THAT P1 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
-P1_ATTACKS_ONTARGET_NUM     DW  0
-P1_ATTACKS_ONTARGET         DW  (GRID_SIZE_MAX * 2) DUP('*')
-P1_ATTACKS_MISSED_NUM       DW  0
-P1_ATTACKS_MISSED           DW  (GRID_SIZE_MAX * 2) DUP('*') 
+MY_ATTACKS_ONTARGET_NUM     DW  0
+MY_ATTACKS_ONTARGET         DW  (GRID_SIZE_MAX * 2) DUP('*')
+MY_ATTACKS_MISSED_NUM       DW  0
+MY_ATTACKS_MISSED           DW  (GRID_SIZE_MAX * 2) DUP('*') 
 
 
-;-------- P1 SHIPS DATA ------------------------------------------
-P1_SHIPS LABEL BYTE
-P1_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(-2)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
+;-------- MY SHIPS DATA ------------------------------------------
+SHIPS LABEL BYTE
+SHIPS_POINTS             DW  N_SHIPS * 4 DUP(-2)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
                                                          ; POINT2_X, POINT2_Y
-P1_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
+SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
          ; NUMBER OF REMAINING CELLS FOR EACH SHIP
-P1_SHIPS_IS_VERTICAL        DW  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
-P1_SHIPS_REMAINING_CELLS    DB  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
+SHIPS_IS_VERTICAL        DW  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
+SHIPS_REMAINING_CELLS    DB  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
        
-;---------------- PLAYER 2 DATA ----------------------------------
-P2_USERNAME         DB  16, ?, 16 DUP ('?')
-P2_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
-P2_SCORE_STRING                         DB  2 DUP(?)
+;---------------- Other PLAYER DATA ----------------------------------
+OTHER_PLAYER_USERNAME         DB  16, ?, 16 DUP ('?')
+OTHER_PLAYER_SCORE            DB  TOTAL_N_CELLS ; NUMBER OF REMAINING CELLS, INITIALLY TOTAL CELLS OF ALL SHIPS
+OTHER_PLAYER_SCORE_STRING                         DB  2 DUP(?)
 
-;-------- P2 ATTACKS ---------------------------------------------
+;-------- OTHER PLAYER ATTACKS ---------------------------------------------
 ;GRID CELLS THAT P2 ATTACKED (CELL1X, CELL1Y, CELL2X, CELL2Y, ..)
 
-P2_ATTACKS_ONTARGET_NUM     DW  0
-P2_ATTACKS_ONTARGET         DW  (GRID_SIZE_MAX * 2) DUP('*')
-P2_ATTACKS_MISSED_NUM       DW  0
-P2_ATTACKS_MISSED           DW  (GRID_SIZE_MAX * 2) DUP('*')  
+OTHER_PLAYER_ATTACKS_ONTARGET_NUM     DW  0
+OTHER_PLAYER_ATTACKS_ONTARGET         DW  (GRID_SIZE_MAX * 2) DUP('*')
+OTHER_PLAYER_ATTACKS_MISSED_NUM       DW  0
+OTHER_PLAYER_ATTACKS_MISSED           DW  (GRID_SIZE_MAX * 2) DUP('*')
+;-------- OTHER PLAYER DESTROYED SHIPS ---------------------------------------------
+IS_DESTROYED                            DB ?
+DESTROYED_X1                            DW ?
+DESTROYED_X2                            DW ?
+DESTROYED_Y1                            DW ?
+DESTROYED_Y2                            DW ?  
+OTHER_PLAYER_DESTROYED_SHIPS            DW  N_SHIPS * 4 DUP(-2)
+OTHER_PLAYER_DESTROYED_SHIPS_NUM        DB 0
+DESTROYED_SHIP_REMAINING_CELLS          DB 0
+DESTROYED_SHIP_ORIENTATION              DW 0
+DESTROYED_SHIP_SIZE                     DW 0
 
-;-------- P2 SHIPS DATA ------------------------------------------
-P2_SHIPS LABEL BYTE
-P2_SHIPS_POINTS             DW  N_SHIPS * 4 DUP(-2)       ; FOR EACH SHIP STORE POINT1_X, POINT1_Y
-                                                         ; WE DON'T NEED POINT 2 AS WE HAVE SIZE & VERTICAL OR HORIZONTAL
-                                                         ; BUT KEEP THEM NOT TO CALCUALTE THEM EACH TIME
-P2_SHIPS_SIZES              DW  5, 4, 4, 4, 3, 3, 3, 2, 2, 2
-                                                             ; NUMBER OF REMAINING CELLS FOR EACH SHIP
-P2_SHIPS_IS_VERTICAL        DW  N_SHIPS DUP(1)            ; IS THE SHIP VERTICAL? (0: HORIZONTAL, 1:VERTICAL)
-P2_SHIPS_REMAINING_CELLS    DB  5, 4, 4, 4, 3, 3, 3, 2, 2, 2 
 
 .CODE
 MAIN PROC FAR
@@ -292,7 +361,7 @@ PRE_EXIT_SCREEN:
         DRAW_PRE_EXIT_SCREEN     
 THE_END:
         EXIT_GAME
-  
+
 HLT
 RET
 MAIN    ENDP
@@ -302,21 +371,11 @@ MAIN    ENDP
 ;-------------------------------------;
 POWER_UP_PICKER_ PROC    NEAR
     ; PARAMETERS
-    ; AL = PLAYER_NUMBER
-    MOV POWER_UPS_CURRENT_PLAYER, AL
     MOV CL, 1
     MOV DL, 1
-    
-    CMP POWER_UPS_CURRENT_PLAYER, 1
-    JNZ SET_POWER_UPS_P2
-    MOV DI, OFFSET P1_N_AVAILABLE_POWER_UPS
-    MOV BX, OFFSET P1_IS_USED
-    JMP CHECK_N_POWER_UPS
-    SET_POWER_UPS_P2:
-    MOV DI, OFFSET P2_N_AVAILABLE_POWER_UPS
-    MOV BX, OFFSET P2_IS_USED
-    
-    CHECK_N_POWER_UPS:
+    MOV DI, OFFSET MY_N_AVAILABLE_POWER_UPS
+    MOV BX, OFFSET MY_POWER_UPS_IS_USED
+
     CMP BYTE PTR [DI], 0
     JNZ DRAW_THE_CARDS
     JMP END_PICKER
@@ -330,10 +389,9 @@ POWER_UP_PICKER_ PROC    NEAR
     PRINT_POWER_UP_MSG  POWER_UP_INDEX
     
     PICKER_WAIT_KEY_PRESS:
-    MOV AH, 0
-    INT 16H
-    CMP AH,EXIT_SCANCODE
-    JE PRE_EXIT_SCREEN
+    WAIT_FOR_KEY
+    MOV AH , KEY_PRESSED
+    
     CMP AH, UP_SCANCODE
     JZ MOVE_POWER_UP_UP
     CMP AH, DOWN_SCANCODE
@@ -388,38 +446,38 @@ POWER_UP_PICKER_ PROC    NEAR
     
     
     ACTIVATE_DESTROY_SHIP:
-    ACTIVATE_DESTROY_RANDOM_POWER_UP
+    DESTROY_RANDOM_SHIP_POWER_UP_ACTIVATED
     JMP RETURN_TO_GAME
     
     ACTIVATE_ATTACK_TWICE:
-    ACTIVATE_ATTACK_TWICE_POWER_UP
+    MY_ATTACK_TWICE_POWER_UP_ACTIVATED
     JMP RETURN_TO_GAME
     
     ACTIVATE_REVERSED_ATTACK:
-    CMP IS_REVERSE_ATTACK_ACTIVATED, 1
-    JZ  REVERSE_A_REVERSED_ATTACK
-    MOV IS_REVERSE_ATTACK_ACTIVATED ,1
+    ;CMP IS_REVERSE_ATTACK_ACTIVATED, 1
+    ;JZ  REVERSE_A_REVERSED_ATTACK
+    ;MOV IS_REVERSE_ATTACK_ACTIVATED ,1
     JMP RETURN_TO_GAME
     
-    REVERSE_A_REVERSED_ATTACK:
-    MOV IS_REVERSE_ATTACK_ACTIVATED , 0
-    MOV IS_REVERSE_COUNT, 0
-    PRINT_NOTIFICATION_MESSAGE  REVERSE_A_REVERSED_ATTACK_MSG, 1
-    PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 2
-    WAIT_FOR_ENTER_RR:
-        MOV AH, 0
-        INT 16H
-        CMP AH, ENTER_SCANCODE
-    JNZ WAIT_FOR_ENTER_RR
-    JMP RETURN_TO_GAME
+    ;REVERSE_A_REVERSED_ATTACK:
+    ;MOV IS_REVERSE_ATTACK_ACTIVATED , 0
+    ; MOV IS_REVERSE_COUNT, 0
+    ;PRINT_NOTIFICATION_MESSAGE  REVERSE_A_REVERSED_ATTACK_MSG, 1
+    ;PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 2
+    ; WAIT_FOR_ENTER_RR:
+    ;    MOV AH, 0
+    ;   INT 16H
+    ;   CMP AH, ENTER_SCANCODE
+    ;JNZ WAIT_FOR_ENTER_RR
+    ; JMP RETURN_TO_GAME
     
-    GO_BACK:
+     GO_BACK:
     DRAW_POWER_UP_CARD_BORDER   CL, BLACK
     JMP END_PICKER
     
     RETURN_TO_GAME:
     CLEAR_POWER_UPS
-    DRAW_POWER_UPS  POWER_UPS_CURRENT_PLAYER
+    DRAW_POWER_UPS  
 
     END_PICKER:
     PRINT_NOTIFICATION_MESSAGE  SELECT_ATTACK_COLUMN_MSG, 1
@@ -485,17 +543,26 @@ PRINT_POWER_UP_MSG_      PROC    NEAR
     RETURN_TO_PICKER:
     RET
 PRINT_POWER_UP_MSG_ ENDP
-;-------------------------------------;   
-      
-ACTIVATE_ATTACK_TWICE_POWER_UP_   PROC    NEAR
-    MOV IS_ATTACK_TWICE_ACTIVATED  , 1
+;-------------------------------------;        
+MY_ATTACK_TWICE_POWER_UP_ACTIVATED_   PROC    NEAR
+   
+    MOV IS_MY_ATTACK_TWICE_ACTIVATED  , 1
+    SEND_POWER_UP_ACTIVATION ATTACK_TWICE_CODE
     RET
-ACTIVATE_ATTACK_TWICE_POWER_UP_    ENDP
+    
+MY_ATTACK_TWICE_POWER_UP_ACTIVATED_     ENDP
 ;-------------------------------------;
-
-ACTIVATE_DESTROY_RANDOM_POWER_UP_   PROC    NEAR    
-     MOV IS_DESTROY_SHIP_ACTIVATED  , 1
+OTHER_PLAYER_ATTACK_TWICE_POWER_UP_ACTIVATED_   PROC    NEAR
+   
+    MOV IS_OTHER_PLAYER_ATTACK_TWICE_ACTIVATED  , 1
+    PRINT_NOTIFICATION_MESSAGE OTHER_PLAYER_ACTIVATE_ATTACK_TWICE_MSG , 1
+    RET
+    
+OTHER_PLAYER_ATTACK_TWICE_POWER_UP_ACTIVATED_     ENDP
+;-------------------------------------;
+DESTROY_RANDOM_SHIP_POWER_UP_ACTIVATED_   PROC    NEAR    
      
+     MOV IS_MY_DESTROY_SHIP_ACTIVATED  , 1
      MOV AH,2CH               ;GET TIME
      INT 21H 
      
@@ -504,121 +571,101 @@ ACTIVATE_DESTROY_RANDOM_POWER_UP_   PROC    NEAR
      MOV CH ,00H
      MOV DL ,002
      
-     MOV AX , CX
+     MOV AX , CX               ;DIVIDE THE RANDOM NUMBER BY 2 TO GET RANDOM PLAYER
      DIV DL
      MOV RANDOM_PLAYER , AH
      
-     MOV DL ,0AH
+
+     CMP RANDOM_PLAYER , 1
+     JZ DESTROY_OTHER_PLAYER_SHIP
+     CHOOSE_SHIP_AND_DESTROY_IT
+     SEND_POWER_UP_ACTIVATION DESTROY_RANDOM_SHIP_CODE
+     RET
+    
+     DESTROY_OTHER_PLAYER_SHIP:
+     SEND_POWER_UP_ACTIVATION DESTROY_RANDOM_SHIP_CODE
+     RECEIEVE_DESTROYED_SHIP_POWER_UP_RESULT    
+     RET
+
+DESTROY_RANDOM_SHIP_POWER_UP_ACTIVATED_    ENDP
+;--------------------------------------;
+CHOOSE_SHIP_AND_DESTROY_IT_ PROC NEAR
+
+     MOV AH,2CH               ;GET TIME
+     INT 21H 
+     
+     MOV RANDOM_NUMBER, DH
+     MOV CL ,DH
+     MOV CH ,00H
+     
+     MOV DL ,0AH                ;DIVIDE THE RANDOM NUMBER BY 10 TO GET RANDOM SHIP INDEX
      MOV AX , CX
      DIV DL 
-     MOV RANDOM_SHIP , AH 
-     MOV DL ,RANDOM_SHIP
+     MOV RANDOM_SHIP , AH         
+     MOV DL ,RANDOM_SHIP        ;PUT THE RANDOM SHIP INDEX IN DX
      MOV DH ,00
-     CMP RANDOM_PLAYER , 1
-     JZ DESTROY_PLAYER1_SHIP
      
-     DESTROY_PLAYER2_SHIP:
-     ; CHECK IF THE SHIP IS ALREADY DESTROYED
-     MOV BX, OFFSET P2_SHIPS_REMAINING_CELLS
+     DESTROY_MY_SHIP:
+     ;CHECK IF THE SHIP IS ALREADY DESTROYED
+     MOV BX, OFFSET SHIPS_REMAINING_CELLS
      ADD BX, DX
-     P2_CHECK_ALREADY_DESTROYED:
+     MY_CHECK_ALREADY_DESTROYED:
         CMP BYTE PTR[BX], 0
-        JNZ P2_SHIP_NOT_DESTROYED
+        JNZ MY_SHIP_NOT_DESTROYED
         INC DX
         INC BX
         CMP DX, 0AH
-        JNZ P2_CHECK_ALREADY_DESTROYED
+        JNZ MY_CHECK_ALREADY_DESTROYED
         MOV DX, 0
-        MOV BX, OFFSET P2_SHIPS_REMAINING_CELLS
-        JMP P2_CHECK_ALREADY_DESTROYED 
-     P2_SHIP_NOT_DESTROYED:
+        MOV BX, OFFSET SHIPS_REMAINING_CELLS
+        JMP MY_CHECK_ALREADY_DESTROYED 
+       
+     MY_SHIP_NOT_DESTROYED:
+     MOV BX, OFFSET OTHER_PLAYER_ATTACKS_ONTARGET         ; DESTROY PLAYER MY SHIP --> ADD TO OTHER PLAYER ATTACKS
+     MOV AX, OTHER_PLAYER_ATTACKS_ONTARGET_NUM
+     MOV CL, 4                                      ; TWO POINTS FOR EACH ATTACK SO FOUR BYTES
+     MUL CL                                      
+     ADD BX, AX                              ;BX --> THE START POINT WHERE SHOULD I PUT THE DESTROYED SHIP POINTS
      
-     MOV BX, OFFSET P1_ATTACKS_ONTARGET         ; DESTROY PLAYER 2 SHIP --> ADD TO P1 ATTACKS
-     MOV AX, P1_ATTACKS_ONTARGET_NUM
-     MOV CL, 4
-     MUL CL                                      
-     ADD BX, AX                                  ;BX --> THE START POINT WHERE SHOULD I AND THE DESTROYED SHIP POINTS
-     MOV DI, OFFSET P2_SHIPS_SIZES
+     MOV DI, OFFSET SHIPS_SIZES
      MOV AX, DX
      MOV CL, 2
      MUL CL                                      
-     ADD DI, AX 
+     ADD DI, AX                       
      MOV AX, [DI]     
-     MOV SHIP_SIZE, AX                        ;SHIP_SIZE --> THE SIZE OF THE SHIP
-     MOV DI, OFFSET P2_SHIPS_REMAINING_CELLS
+     MOV SHIP_SIZE, AX                      ;SHIP_SIZE --> THE SIZE OF THE SHIP
+     
+     MOV DI, OFFSET SHIPS_REMAINING_CELLS
      MOV AX, DX
-     ADD DI, AX                                 ; DI --> REMAINING CELLS
-     MOV SI, OFFSET P2_SHIPS_IS_VERTICAL
+     ADD DI, AX                            ; DI --> REMAINING CELLS
+     
+     MOV SI, OFFSET SHIPS_IS_VERTICAL
      MOV AX, DX
      MOV CL, 2
      MUL CL                                      
-     ADD SI, AX                                 ;SI --> IS THE SHIP VERTICAL  
-     MOV BP, OFFSET P2_SHIPS_POINTS
+     ADD SI, AX                            ;SI --> IS THE SHIP VERTICAL  
+    
+     MOV BP, OFFSET SHIPS_POINTS
      MOV AX, DX
      MOV CL, 8
      MUL CL                                      
-     ADD BP, AX                                 ;BP --> THE START POINT OF THE SHIP
-     ; INCREASE THE COUNT OF THE ATTACKS
-     MOV AX, SHIP_SIZE
-     ADD P1_ATTACKS_ONTARGET_NUM, AX
-     ; DECREASE SCORE
+     ADD BP, AX                           ;BP --> THE START POINT OF THE SHIP
+ 
+     ;INCREASE THE COUNT OF THE ATTACKS
+     MOV AX, SHIP_SIZE               ;I EDITED THIS IF THERE WAS AN ERROR
+     ADD OTHER_PLAYER_ATTACKS_ONTARGET_NUM, AX
+     
+     ;DECREASE SCORE
      MOV AL, BYTE PTR [DI]
-     SUB P2_SCORE, AL
-     PRINT_PLAYER2_SCORE
-     JMP DESTROY_RANDOM_SHIP_NOW
-     
-     DESTROY_PLAYER1_SHIP:
-     ; CHECK IF THE SHIP IS ALREADY DESTROYED
-     MOV BX, OFFSET P1_SHIPS_REMAINING_CELLS
-     ADD BX, DX
-     P1_CHECK_ALREADY_DESTROYED:
-        CMP BYTE PTR[BX], 0
-        JNZ P1_SHIP_NOT_DESTROYED
-        INC BX
-        INC DX
-        CMP DX, 0AH
-        JNZ P1_CHECK_ALREADY_DESTROYED
-        MOV DX, 0
-        MOV BX, OFFSET P1_SHIPS_REMAINING_CELLS
-        JMP P1_CHECK_ALREADY_DESTROYED
-     P1_SHIP_NOT_DESTROYED:
-     
-     MOV BX, OFFSET P2_ATTACKS_ONTARGET         ;DESTROY PLAYER 1 ATTACK , MEANS THAT PLAYER 2 ATTACKED
-     MOV AX, P2_ATTACKS_ONTARGET_NUM
-     MOV CL, 4
-     MUL CL                                      
-     ADD BX, AX                                  ;BX --> THE START POINT WHERE I SHOULD PUT THE DESTROYED SHIP POINTS
-     MOV DI, OFFSET P1_SHIPS_SIZES
-     MOV AX, DX
-     MOV CL, 2
-     MUL CL                                      
-     ADD DI, AX
-     MOV AX, [DI]     
-     MOV SHIP_SIZE, AX                        ;SHIP_SIZE --> THE SIZE OF THE SHIP  
-     MOV DI, OFFSET P1_SHIPS_REMAINING_CELLS
-     MOV AX, DX
-     ADD DI, AX                                 ; DI --> REMAINING CELLS     
-     MOV SI, OFFSET P1_SHIPS_IS_VERTICAL
-     MOV AX, DX
-     MOV CL, 2
-     MUL CL                                      
-     ADD SI, AX                                 ;SI --> IS THE SHIP VERTICAL  
-     MOV BP, OFFSET P1_SHIPS_POINTS
-     MOV AX, DX
-     MOV CL, 8
-     MUL CL                                      
-     ADD BP, AX                                 ;BP --> THE START POINT OF THE SHIP
-     ; INCREASE THE COUNT OF THE ATTACKS
-     MOV AX, SHIP_SIZE
-     ADD P2_ATTACKS_ONTARGET_NUM, AX
-     ; DECREASE SCORE
-     MOV AL, BYTE PTR [DI]
-     SUB P1_SCORE, AL
-     PRINT_PLAYER1_SCORE
-     
-     DESTROY_RANDOM_SHIP_NOW:
+     MOV DESTROYED_SHIP_REMAINING_CELLS,AL
+     SUB MY_SCORE, AL
+     PRINT_MY_SCORE
+
+     ;STARTING DESTROY THE SHIP
      MOV AX , [SI]
+     MOV DESTROYED_SHIP_ORIENTATION, AX             
      MOV CX , SHIP_SIZE
+     MOV DESTROYED_SHIP_SIZE, CX
      MOV BYTE PTR [DI], 0
      CMP AX ,1
      JZ THE_RANDOM_SHIP_IS_VERTICAL
@@ -626,6 +673,8 @@ ACTIVATE_DESTROY_RANDOM_POWER_UP_   PROC    NEAR
  THE_RANDOM_SHIP_IS_HORIZONTAL: 
      MOV DX , DS:[BP]      ;DX ---> X OF THE SHIP
      MOV AX , DS:[BP+2]    ;AX ---> Y OF THE SHIP
+     MOV DESTROYED_X1, DX
+     MOV DESTROYED_Y1, AX
      LOOP_ON_THE_HSHIP_CELLS:
      MOV [BX] , DX
      MOV [BX + 2], AX
@@ -638,6 +687,8 @@ ACTIVATE_DESTROY_RANDOM_POWER_UP_   PROC    NEAR
  THE_RANDOM_SHIP_IS_VERTICAL:
      MOV DX , DS:[BP]      ;DX ---> X OF THE SHIP
      MOV AX , DS:[BP+2]    ;AX ---> Y OF THE SHIP
+     MOV DESTROYED_X1, DX
+     MOV DESTROYED_Y1, AX
      LOOP_ON_THE_VSHIP_CELLS:
      MOV [BX] , DX
      MOV [BX + 2], AX
@@ -647,20 +698,89 @@ ACTIVATE_DESTROY_RANDOM_POWER_UP_   PROC    NEAR
      JNZ LOOP_ON_THE_VSHIP_CELLS
      
      RANDOM_SHIP_DESTROYED:
+                     
      RET
-     
- ACTIVATE_DESTROY_RANDOM_POWER_UP_    ENDP
+
+CHOOSE_SHIP_AND_DESTROY_IT_ ENDP
 ;--------------------------------------;
+UPDATE_OTHER_PLAYER_RANDOM_DESTROYED_SHIP_ PROC NEAR
+ 
+
+     MOV BX, OFFSET MY_ATTACKS_ONTARGET            ;  DESTROY PLAYER OTHER PLAYER SHIP --> ADD TO MY ATTACKS
+     MOV AX, MY_ATTACKS_ONTARGET_NUM
+     MOV CL, 4                                      ; TWO POINTS FOR EACH ATTACK SO FOUR BYTES
+     MUL CL                                      
+     ADD BX, AX                                 ;BX --> THE START POINT WHERE SHOULD I PUT THE DESTROYED SHIP POINTS
+     
+     ;INCREASE THE COUNT OF THE ATTACKS
+     MOV AX, DESTROYED_SHIP_SIZE               
+     ADD MY_ATTACKS_ONTARGET_NUM, AX
+     
+     ;DECREASE SCORE
+     MOV AL, DESTROYED_SHIP_REMAINING_CELLS
+     SUB OTHER_PLAYER_SCORE, AL
+     PRINT_OTHER_PLAYER_SCORE
+
+     ;STARTING DESTROY THE SHIP
+     MOV SI, OFFSET OTHER_PLAYER_DESTROYED_SHIPS
+     MOV AL, OTHER_PLAYER_DESTROYED_SHIPS_NUM
+     MOV CL, 8                                      ; FOUR POINTS FOR EACH SHIP SO EIGHT BYTES
+     MUL CL                                      
+     ADD SI, AX                                 ;BX --> THE START POINT WHERE SHOULD I PUT THE DESTROYED SHIP POINTS
+    
+     MOV AL,OTHER_PLAYER_DESTROYED_SHIPS_NUM
+     INC AL
+     MOV OTHER_PLAYER_DESTROYED_SHIPS_NUM, AL
+     
+     MOV AX , DESTROYED_SHIP_ORIENTATION            
+     MOV CX , DESTROYED_SHIP_SIZE
+     CMP AX ,1
+     JZ THE_RANDOM_SHIP_IS_VERTICAL1
+    
+     THE_RANDOM_SHIP_IS_HORIZONTAL1: 
+     MOV DX , DESTROYED_X1      ;DX ---> X OF THE SHIP
+     MOV AX , DESTROYED_Y1      ;AX ---> Y OF THE SHIP
+     MOV [SI], DX
+     MOV [SI + 2], AX
+     MOV [SI + 6], AX           ;AS IT HORIZONTAL , SO THE SAME Y
+     LOOP_ON_THE_HSHIP_CELLS1:
+     MOV [BX] , DX
+     MOV [BX + 2], AX
+     INC DX
+     ADD BX , 4
+     DEC CX
+     JNZ LOOP_ON_THE_HSHIP_CELLS1
+     DEC DX
+     MOV [SI + 4], DX         ;THE LAST X COORDINATE
+     JMP RANDOM_SHIP_DESTROYED1
+
+     THE_RANDOM_SHIP_IS_VERTICAL1:
+     MOV DX , DESTROYED_X1     ;DX ---> X OF THE SHIP
+     MOV AX , DESTROYED_Y1     ;AX ---> Y OF THE SHIP
+     MOV [SI], DX
+     MOV [SI + 2], AX
+     MOV [SI + 4], DX          ;AS IT VERTICAL , SO THE SAME X
+     LOOP_ON_THE_VSHIP_CELLS1:
+     MOV [BX] , DX
+     MOV [BX + 2], AX
+     INC AX
+     ADD BX , 4
+     DEC CX
+     JNZ LOOP_ON_THE_VSHIP_CELLS1
+     DEC AX
+     MOV [SI + 6], AX          ;THE LAST Y COORDINATE
+     
+     RANDOM_SHIP_DESTROYED1:
+                     
+     RET
+UPDATE_OTHER_PLAYER_RANDOM_DESTROYED_SHIP_ ENDP
+;------------------------------------------;
 DRAW_POWER_UPS_  PROC    NEAR
     ; PARAMETERS: AL = PLAYER_NUMBER
     ; DRAW THE EMPTY CARDS
-    DRAW_POWER_UPS_CARDS    AL
-    CMP AL, 1
-    JNZ DRAW_P2_POWER_UPS
-    MOV BX, OFFSET P1_IS_USED
-    JMP START_DRAWING_EMPTY_CARDS
-    DRAW_P2_POWER_UPS:
-    MOV BX, OFFSET P2_IS_USED
+    DRAW_POWER_UPS_CARDS    
+    
+    MOV BX, OFFSET MY_POWER_UPS_IS_USED
     
     START_DRAWING_EMPTY_CARDS:
     MOV CL, 1   ; POWER UP INDEX
@@ -943,16 +1063,9 @@ DRAW_DESTROY_SHIP_POWER_UP_    ENDP
 
 DRAW_POWER_UPS_CARDS_    PROC    NEAR
     ; PARAMETERS
-    ; AL = PLAYER_NUMBER
-    
-    CMP AL, 1
-    JNZ DRAW_P2_CARDS
-    MOV AL, P1_N_AVAILABLE_POWER_UPS
-    JMP DRAW_THE_CARD
-    DRAW_P2_CARDS:
-    MOV AL, P2_N_AVAILABLE_POWER_UPS
-    
-    DRAW_THE_CARD:
+
+
+    MOV AL, MY_N_AVAILABLE_POWER_UPS
     CMP AL, 0
     JZ DRAW_NO_CARDS
     CMP AL, 1
@@ -1028,17 +1141,19 @@ DRAW_POWER_UP_CARD_BORDER_   ENDP
 ;-------------------------------------;
 
 IS_CELL_ON_GRID_   PROC    NEAR
+
     CMP ATTACKY, 0
     JL NOT_ON_GRID
     MOV AX, GRID_CELLS_MAX_COORDINATE
-    CMP ATTACKY, AX
+    CMP ATTACKY, AX 
     JA NOT_ON_GRID
+
     MOV IS_ON_GRID, 1
     JMP DETERMINED
     
     NOT_ON_GRID:
     MOV IS_ON_GRID, 0
-    DETERMINED:
+    DETERMINED:    
     RET
 
 IS_CELL_ON_GRID_   ENDP
@@ -1046,33 +1161,18 @@ IS_CELL_ON_GRID_   ENDP
 
 PLACE_SHIPS_ON_GRID_     PROC    NEAR
     ; PARAMETERS
-    ; AL = PLAYER NUMBER (1 OR 2)
-    DRAW_SELECTION_SHIPS AL
-    MOV SELECTED_PLAYER_SHIPS,AL
+    DRAW_SELECTION_SHIPS 
     MOV CX, 0
-    CMP AL, 1
-    JNZ PLAYER2_PLACE_SHIPS
-    ; PLAYER 1 PLACE SHIPS:
-    MOV BX, OFFSET P1_SHIPS_POINTS
-    MOV DI, OFFSET P1_SHIPS_SIZES
-    MOV SI, OFFSET P1_SHIPS_IS_VERTICAL
-    JMP DISPLAY_STARTING_MSG
-    
-    PLAYER2_PLACE_SHIPS:
-    MOV BX, OFFSET P2_SHIPS_POINTS
-    MOV DI, OFFSET P2_SHIPS_SIZES
-    MOV SI, OFFSET P2_SHIPS_IS_VERTICAL 
+    MOV BX, OFFSET SHIPS_POINTS
+    MOV DI, OFFSET SHIPS_SIZES
+    MOV SI, OFFSET SHIPS_IS_VERTICAL 
     
     DISPLAY_STARTING_MSG:
     PUSH AX
     PRINT_NOTIFICATION_MESSAGE  START_PLACING_SHIPS_MSG, 1
     WAIT_FOR_ENTER_TO_START_PLACING_SHIPS:
-        MOV AH, 0
-        INT 16H
-        CMP AH,EXIT_SCANCODE
-        JE PRE_EXIT_SCREEN
-        CMP AH,EXIT_SCANCODE
-        JE PRE_EXIT_SCREEN
+        WAIT_FOR_KEY
+        MOV AH , KEY_PRESSED
         CMP AH, ENTER_SCANCODE
         JNZ WAIT_FOR_ENTER_TO_START_PLACING_SHIPS
     POP AX
@@ -1115,7 +1215,7 @@ PLACE_SHIPS_ON_GRID_     PROC    NEAR
         DRAW_SELECTION_SHIP CX, [DI] , DARK_GRAY
         
         POP AX
-        DRAW_ALL_SHIPS_ON_GRID AL
+        DRAW_ALL_SHIPS_ON_GRID 
         PUSH AX
         
         ; NEXT SHIP
@@ -1128,10 +1228,8 @@ PLACE_SHIPS_ON_GRID_     PROC    NEAR
     
     PRINT_NOTIFICATION_MESSAGE  ALL_SHIPS_PLACED_MSG, 1
     WAIT_FOR_ENTER_TO_FINISH_PLACING_SHIPS:
-        MOV AH, 0
-        INT 16H
-        CMP AH,EXIT_SCANCODE
-        JE PRE_EXIT_SCREEN
+        WAIT_FOR_KEY
+        MOV AH , KEY_PRESSED
         CMP AH, ENTER_SCANCODE
         JNZ WAIT_FOR_ENTER_TO_FINISH_PLACING_SHIPS
      
@@ -1196,10 +1294,8 @@ GET_ATTACK_COLUMN_  PROC    NEAR
     PRINT_NOTIFICATION_MESSAGE  SELECT_ATTACK_COLUMN_MSG, 1
 
     GET_KEY_PRESSED:
-        MOV AH, 0
-        INT 16H
-        CMP AH,EXIT_SCANCODE
-        JE PRE_EXIT_SCREEN
+        WAIT_FOR_KEY
+        MOV AH , KEY_PRESSED
         CMP AH, SPACE_SCANCODE
         JZ SPACE_PRESSED
         CMP AH, RIGHT_SCANCODE
@@ -1212,7 +1308,7 @@ GET_ATTACK_COLUMN_  PROC    NEAR
         
         
         THE_USER_NEEDS_POWER_UP:
-        CMP IS_ATTACK_TWICE_ACTIVATED , 1
+        CMP IS_MY_ATTACK_TWICE_ACTIVATED , 1
         JZ  IN_SECOND_ATTACK
         POWER_UP_PICKER PLAYER_ATTACKING
         JMP GET_KEY_PRESSED
@@ -1296,12 +1392,8 @@ SET_LEVEL_SETTINGS_ ENDP
 DRAW_SELECTION_SHIPS_   PROC    NEAR
     ; PARAMETERS AL: 1 OR 2 (PLAYER)
     MOV CX, 0
-    CMP AL, 1
-    JNZ PLAYER2_SELECTION_SHIPS
-    MOV DI, OFFSET P1_SHIPS_SIZES
-    JMP DRAW_ALL_SELECTION_SHIPS
-    PLAYER2_SELECTION_SHIPS:
-    MOV DI, OFFSET P2_SHIPS_SIZES
+    MOV DI, OFFSET SHIPS_SIZES
+    
     DRAW_ALL_SELECTION_SHIPS:
         DRAW_SELECTION_SHIP CX, [DI], DARK_GRAY
         ADD DI, 2
@@ -1452,16 +1544,10 @@ PRINT_MESSAGE_    PROC NEAR
 PRINT_MESSAGE_    ENDP
 ;-------------------------------------;
 GET_USER_NAME_     PROC NEAR
+     
      PRINT_MESSAGE PLEASE_ENTER_YOUR_NAME_MSG , 1025H , 0FF0FH
      PRINT_MESSAGE PRESS_ENTER_MSG , 1425H , 0FF0FH
-     
-     CMP SI,1H
-     JNZ PLAYER2
-     PRINT_MESSAGE PLAYER1_MSG ,0C2EH , 0FF28H
-     JMP START_WRITING_HERE
-PLAYER2:
-     PRINT_MESSAGE PLAYER2_MSG ,0C2EH , 0FF28H
-     
+
 START_WRITING_HERE:  
      DRAW_RECTANGLE  368,280,450,305,BLACK        
      MOV AH,02H             ;MOVE THE CURSOR
@@ -1488,47 +1574,245 @@ START_WRITING_HERE:
 ;-------------------------------------;
 USER_NAMES_     PROC NEAR
     
-     GET_USER_NAME 1H,P1_USERNAME
+     GET_USER_NAME MY_USERNAME
      CLEAR_GAME_SCREEN  BLACK 
-     GET_USER_NAME 2H,P2_USERNAME
-     CLEAR_GAME_SCREEN  BLACK
+     DRAW_NOTIFICATION_BAR
+     PRINT_NOTIFICATION_MESSAGE WAITING_FOR_USERNAME, 1
+     
+     MOV DUMMY_COUNTER, 0 ; DUMMY COUNTER
+     
+     MOV BX, OFFSET RECEIVE_DATA_BUFFER
+     RECEIVE_DATA
+     CMP BYTE PTR [BX], 0
+     JE SEND_USERNAME
+     
+     RECEIVE_USERNAME:
+     CMP BYTE PTR [BX], 0
+     JE NO_USERNAME_ERROR
+     INC BX
+     CMP BYTE PTR [BX], USERNAME_CODE
+     JNE NO_USERNAME_ERROR
+     INC BX
+     MOV CL, BYTE PTR [BX]
+     MOV OTHER_PLAYER_USERNAME + 1, CL
+     MOV CH, 0
+     INC BX
+     MOV DI, OFFSET OTHER_PLAYER_USERNAME + 2
+     READ_USERNAME:
+        MOV AL, BYTE PTR [BX]
+        MOV BYTE PTR [DI], AL
+        INC BX
+        INC DI
+     LOOP READ_USERNAME 
+     INC DUMMY_COUNTER
+     CMP DUMMY_COUNTER, 2
+     JNE SEND_USERNAME
+
+     RET
+     
+     SEND_USERNAME:
+     ; REQUEST ACKNOWLEDGEMENT
+     ADD_BYTE_TO_SEND_BUFFER    USERNAME_CODE, DATA_BUFFER_INDEX
+     ; SEND MY USERNAME
+     MOV BX, OFFSET MY_USERNAME+1
+     MOV CL, BYTE PTR [BX] ; CX = USERNAME SIZE
+     INC BX                ; BX -> ACTUAL USERNAME
+     ADD_BYTE_TO_SEND_BUFFER    CL, DATA_BUFFER_INDEX
+     MOV CH, 0
+     WRITE_USERNAME:
+        MOV DL, BYTE PTR [BX]
+        ADD_BYTE_TO_SEND_BUFFER DL, DATA_BUFFER_INDEX
+        INC BX
+     LOOP WRITE_USERNAME 
+     SEND_DATA  DATA_BUFFER_INDEX
+     
+     INC DUMMY_COUNTER
+     CMP DUMMY_COUNTER, 2
+     JNE RECEIVE_USERNAME_SECOND
+     RET
+     
+     RECEIVE_USERNAME_SECOND:
+     MOV BX, OFFSET RECEIVE_DATA_BUFFER
+     WAIT_FOR_USERNAME:
+         RECEIVE_DATA
+         CMP BYTE PTR [BX], 0
+     JE WAIT_FOR_USERNAME
+     JMP RECEIVE_USERNAME
+     
+     NO_USERNAME_ERROR:
+     MOV AH, 2
+     MOV DL, 'M'
+     INT 21H
      
      RET 
 USER_NAMES_     ENDP
 ;-------------------------------------;
 MAIN_MENU_     PROC NEAR
 
-        PRINT_MESSAGE TO_START_GAME_MSG , 1025H , 0FF0FH
-        PRINT_MESSAGE TO_END_PROG_MSG , 1425H , 0FF0FH
-  NOTVALID:          
-        MOV AH,0
-        INT 16H
-        CMP AH,F2_SCANCODE
-        JZ CONT2
-  NOTF2:                 
-        CMP AH,EXIT_SCANCODE
-        JZ THE_END
-        JNZ NOTVALID            
-  CONT2:       
-  CLEAR_GAME_SCREEN BLACK 
-  DRAW_NOTIFICATION_BAR
-  PRINT_NOTIFICATION_MESSAGE END_GAME_MSG, 2
-     RET 
-
-        HLT
+  ; PRINT MESSAGES
+  PRINT_MESSAGE SEND_GAME_INVITATION_MSG , 1022H , 0FF28H
+  PRINT_MESSAGE SEND_CHAT_INVITATION_MSG, 1222H, 0FF02H
+  PRINT_MESSAGE TO_END_PROG_MSG , 1425H , 0FF03H
+  PRINT_NOTIFICATION_MESSAGE    EMPTY_STRING, 1
+  ; CHECK FOR INVITATIONS
+  MOV BX, OFFSET RECEIVE_DATA_BUFFER
+  
+  CHECK_FOR_INVITATIONS:
+      ; CHECK IF AN INVITATION IS RECEIVED
+      RECEIVE_DATA
+      MOV BX, OFFSET RECEIVE_DATA_BUFFER
+      CMP BYTE PTR [BX], 0
+      JNE INVITATION_RECEIVED
+      ; CHECK IF THE PLAYER WANTS TO SEND AN INVITATION (OR EXIT)
+      MOV AH, 1
+      INT 16H
+      JZ CHECK_FOR_INVITATIONS
+      MOV AH, 0
+      INT 16H
+      CMP AH, F2_SCANCODE
+      JE SEND_GAME_INVITATION
+      CMP AH, F3_SCANCODE
+      JE SEND_CHAT_INVITATION
+      CMP AH,EXIT_SCANCODE
+      JE THE_END
+  JMP CHECK_FOR_INVITATIONS
+  
+  SEND_GAME_INVITATION:
+  ADD_BYTE_TO_SEND_BUFFER GAME_INVITATION_CODE, DATA_BUFFER_INDEX
+  SEND_DATA     DATA_BUFFER_INDEX
+  MOV IS_HOST, 1
+  MOV GAME_MODE, PLAY_MODE
+  PRINT_NOTIFICATION_MESSAGE    SENT_GAME_INVITATION_MSG, 1
+  JMP WAIT_FOR_INVITATION_RESPONSE
+  
+  SEND_CHAT_INVITATION:
+  ADD_BYTE_TO_SEND_BUFFER CHAT_INVITATION_CODE, DATA_BUFFER_INDEX
+  SEND_DATA     DATA_BUFFER_INDEX
+  MOV IS_HOST, 1
+  MOV GAME_MODE, CHAT_MODE
+  PRINT_NOTIFICATION_MESSAGE    SENT_CHAT_INVITATION_MSG, 1
+  
+  WAIT_FOR_INVITATION_RESPONSE:
+  MOV BX, OFFSET RECEIVE_DATA_BUFFER
+  CHECK_FOR_RESPONSE:
+    RECEIVE_DATA
+    CMP BYTE PTR [BX], 0
+    JNE CHECK_RESPONSE
+    ; CHECK IF THE INVITATION IS CANCELLED
+    MOV AH, 1
+    INT 16H
+    JZ CHECK_FOR_RESPONSE
+    MOV AH, 0
+    INT 16H
+    CMP AH, SPACE_SCANCODE
+    JE CANCEL_INVITATION
+    CMP AH, EXIT_SCANCODE
+    JE THE_END
+   JMP CHECK_FOR_RESPONSE
+   
+   CANCEL_INVITATION:
+   ADD_BYTE_TO_SEND_BUFFER CANCEL_INVITATION_CODE, DATA_BUFFER_INDEX
+   SEND_DATA    DATA_BUFFER_INDEX
+   PRINT_NOTIFICATION_MESSAGE    YOU_CANCELLED_MSG, 1
+   JMP CHECK_FOR_INVITATIONS 
+   
+   CHECK_RESPONSE:
+   MOV BX, OFFSET RECEIVE_DATA_BUFFER+1
+   CMP BYTE PTR [BX], ACCEPT_INVITATION_CODE
+   JE INVITATION_ACCEPTED
+   CMP BYTE PTR [BX], REJECT_INVITATION_CODE
+   JE INVITATION_REJECTED
+   JMP CHECK_FOR_RESPONSE
+   
+   INVITATION_REJECTED:
+   PRINT_NOTIFICATION_MESSAGE    INVITATION_REJECTED_MSG, 1
+   JMP CHECK_FOR_INVITATIONS
+   
+   INVITATION_ACCEPTED:
+   PRINT_NOTIFICATION_MESSAGE    INVITATION_ACCEPTED_MSG, 1
+   JMP START_GAME_MODE
+    
+   INVITATION_RECEIVED:
+   MOV IS_HOST, 0
+   MOV BX, OFFSET RECEIVE_DATA_BUFFER+1
+   MOV AL, BYTE PTR [BX]
+   MOV BX, OFFSET RECEIVE_DATA_BUFFER
+   CMP AL, GAME_INVITATION_CODE
+   JE GAME_INVITATION_RECEIVED
+   CMP AL, CHAT_INVITATION_CODE
+   JNE CHECK_FOR_INVITATIONS
+   CHAT_INVITATION_RECEIVED:
+   PRINT_NOTIFICATION_MESSAGE    RECEIVED_CHAT_INVITATION_MSG, 1
+   MOV GAME_MODE, CHAT_MODE
+   JMP CHECK_FOR_USER_RESPONSE
+   
+   GAME_INVITATION_RECEIVED:
+   MOV GAME_MODE, PLAY_MODE
+   PRINT_NOTIFICATION_MESSAGE    RECEIVED_GAME_INVITATION_MSG, 1
+   
+   CHECK_FOR_USER_RESPONSE:
+     ; CHECK IF THE INVITATION IS CANCELLED
+     MOV BX, OFFSET RECEIVE_DATA_BUFFER
+     RECEIVE_DATA
+     CMP BYTE PTR [BX], 0
+     JNE IS_INVITATION_CANCELLED
+     MOV AH, 1
+     INT 16H
+     JZ CHECK_FOR_USER_RESPONSE
+     MOV AH, 0
+     INT 16H
+     CMP AH, ENTER_SCANCODE
+     JE ACCEPT_INVITATION
+     CMP AH, SPACE_SCANCODE
+     JE REJECT_INVITATION
+     CMP AH, EXIT_SCANCODE
+     JE THE_END
+   JMP CHECK_FOR_USER_RESPONSE
      
+   IS_INVITATION_CANCELLED:
+   MOV BX, OFFSET RECEIVE_DATA_BUFFER+1
+   CMP BYTE PTR[BX], CANCEL_INVITATION_CODE
+   JE INVITATION_WAS_CANCELLED
+   JMP CHECK_FOR_USER_RESPONSE
+   
+   INVITATION_WAS_CANCELLED:
+   PRINT_NOTIFICATION_MESSAGE    INVITATION_CANCELLED_MSG, 1; 
+   JMP CHECK_FOR_INVITATIONS
+ 
+   ACCEPT_INVITATION:
+   ADD_BYTE_TO_SEND_BUFFER      ACCEPT_INVITATION_CODE, DATA_BUFFER_INDEX
+   SEND_DATA    DATA_BUFFER_INDEX
+   PRINT_NOTIFICATION_MESSAGE    YOU_ACCEPTED_MSG, 1
+   JMP START_GAME_MODE  
+    
+   REJECT_INVITATION:
+   ADD_BYTE_TO_SEND_BUFFER   REJECT_INVITATION_CODE, DATA_BUFFER_INDEX
+   SEND_DATA    DATA_BUFFER_INDEX
+   PRINT_NOTIFICATION_MESSAGE    YOU_REJECTED_MSG, 1
+   JMP CHECK_FOR_INVITATIONS  
+  
+     
+   START_GAME_MODE:
+   ; SHOULD ADD CODE TO GO TO THE RIGHT MODE
+   CLEAR_GAME_SCREEN BLACK 
+   RET 
 MAIN_MENU_     ENDP
 ;-------------------------------------;
 INITIALIZE_PROGRAM_     PROC NEAR
-
+        
+      
         MOV AX,4F02H           ;GO TO VIDEOMODE 800*600
         MOV BX,103H
         INT 10H
+        INITIALIZE_SERIAL_PORT
 
      RET 
 INITIALIZE_PROGRAM_     ENDP
 ;-------------------------------------;
 GET_LEVEL_     PROC NEAR
+ CMP IS_HOST, 1
+ JNE WAIT_FOR_LEVEL
+ 
  PRINT_MESSAGE ENTER_LEVEL_MSG , 1025H , 0FF0FH
  PRINT_MESSAGE MSG_DASH , 122EH , 0FF0FH
  PRINT_MESSAGE MSG_1 , 122FH , 0FF0FH
@@ -1544,12 +1828,9 @@ GET_LEVEL_     PROC NEAR
         JZ MOVE_THE_DASH_TO_RIGHT
         CMP AH , LEFT_SCANCODE
         JZ MOVE_THE_DASH_TO_LEFT
-        ;CMP AH , EXIT_SCANCODE
-        ;JZ THE_USER_PRESS_ESC_INSIDE_LEVEL_SELECTION
         CMP AH , ENTER_SCANCODE
         JZ THE_LEVEL_IS_KNOWN_NOW
         JNZ NOTVALID2
-
        
     MOVE_THE_DASH_TO_RIGHT:
     DRAW_RECTANGLE  368,292,375,297,BLACK
@@ -1565,14 +1846,41 @@ GET_LEVEL_     PROC NEAR
     MOV LEVEL , DL
     JMP NOTVALID2
     
+   
+    
     THE_LEVEL_IS_KNOWN_NOW:
+    
+    ; SEND THE LEVEL TO PLAYER 2
+    CMP LEVEL, 1
+    JNE SEND_LEVEL2
+    ADD_BYTE_TO_SEND_BUFFER    LEVEL1_CODE, DATA_BUFFER_INDEX
+    SEND_DATA   DATA_BUFFER_INDEX
+    JMP SET_LEVEL
+    
+    SEND_LEVEL2:
+    ADD_BYTE_TO_SEND_BUFFER    LEVEL2_CODE, DATA_BUFFER_INDEX
+    SEND_DATA   DATA_BUFFER_INDEX
+    JMP SET_LEVEL
+    
+    WAIT_FOR_LEVEL:
+    MOV BX, OFFSET RECEIVE_DATA_BUFFER
+    PRINT_NOTIFICATION_MESSAGE  HOST_CHOOSING_LEVEL, 1
+    KEEP_WAITING_FOR_LEVEL:
+        RECEIVE_DATA
+        CMP BYTE PTR [BX], 0
+    JE KEEP_WAITING_FOR_LEVEL
+    MOV AL, BYTE PTR [BX+1]
+    SUB AL, LEVEL1_CODE-1
+    MOV LEVEL, AL
+        
+    SET_LEVEL:
     CMP LEVEL , 1
     JNZ SET_LEVEL2
         
-  SET_LEVEL1:
+    SET_LEVEL1:
         SET_LEVEL_SETTINGS 1
         JMP BACK
-  SET_LEVEL2:
+    SET_LEVEL2:
         SET_LEVEL_SETTINGS 2
         JMP BACK
  
@@ -1584,44 +1892,38 @@ GET_LEVEL_     ENDP
 DRAW_ALL_SHIPS_ON_GRID_   PROC    NEAR
     
     ;PARAMETERS AL: 1 OR 2 (PLAYER)
-    MOV CX,0
-    CMP AL, 1
-    JNZ PLAYER2_ALL_SHIPS
-    MOV SI, OFFSET P1_SHIPS_POINTS
-    MOV DI, OFFSET P1_SHIPS_REMAINING_CELLS
-    JMP DRAW_ALL_SHIPS
-    
-    PLAYER2_ALL_SHIPS:  
-        MOV SI, OFFSET P2_SHIPS_POINTS
-        MOV DI, OFFSET P2_SHIPS_REMAINING_CELLS    
-        DRAW_ALL_SHIPS:
-            MOV AL,BYTE PTR[DI]
-            AND AL, AL
-            JNZ NOT_DESTROYED_SHIP
+    MOV CX,0  
+    MOV SI, OFFSET SHIPS_POINTS
+    MOV DI, OFFSET SHIPS_REMAINING_CELLS    
+   
+ DRAW_ALL_SHIPS:
+    MOV AL,BYTE PTR[DI]
+    AND AL, AL
+    JNZ NOT_DESTROYED_SHIP
             
-            MOV AL , BLACK
-            MOV VARIABLE_COLOR , AL
-            JMP COMPLETE_DRAWING_SHIPS
+    MOV AL , BLACK
+    MOV VARIABLE_COLOR , AL
+    JMP COMPLETE_DRAWING_SHIPS
             
-            NOT_DESTROYED_SHIP:
-            MOV AL , LIGHT_GRAY
-            MOV VARIABLE_COLOR , AL
+    NOT_DESTROYED_SHIP:
+    MOV AL , LIGHT_GRAY
+    MOV VARIABLE_COLOR , AL
             
-            COMPLETE_DRAWING_SHIPS:
-            MOV DX, WORD PTR [SI]
-            MOV GRID1_X, DX
-            MOV DX, WORD PTR [SI + 2]
-            MOV GRID1_Y, DX
-            MOV DX, WORD PTR [SI + 4]
-            MOV GRID2_X, DX
-            MOV DX, WORD PTR [SI + 6]
-            MOV GRID2_Y, DX
-            DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y, VARIABLE_COLOR , DARK_GRAY
-            ADD SI, 8
-            INC DI
-            INC CX
-            CMP CX, N_SHIPS
-            JNZ DRAW_ALL_SHIPS
+    COMPLETE_DRAWING_SHIPS:
+    MOV DX, WORD PTR [SI]
+    MOV GRID1_X, DX
+    MOV DX, WORD PTR [SI + 2]
+    MOV GRID1_Y, DX
+    MOV DX, WORD PTR [SI + 4]
+    MOV GRID2_X, DX
+    MOV DX, WORD PTR [SI + 6]
+    MOV GRID2_Y, DX
+    DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y, VARIABLE_COLOR , DARK_GRAY
+    ADD SI, 8
+    INC DI
+    INC CX
+    CMP CX, N_SHIPS
+    JNZ DRAW_ALL_SHIPS
     RET
     
     DRAW_ALL_SHIPS_ON_GRID_   ENDP
@@ -1690,18 +1992,18 @@ DRAW_ALL_X_SIGNS_   PROC    NEAR
     
     ;PARAMETERS AL: 1 OR 2 (PLAYER)
     CMP AL, 1
-    JNZ PLAYER2_ALL_ATTACKS
-    MOV SI, OFFSET P1_ATTACKS_ONTARGET 
-    MOV DI, OFFSET P1_ATTACKS_MISSED 
-    MOV CX, P1_ATTACKS_ONTARGET_NUM 
-    MOV DX, P1_ATTACKS_MISSED_NUM    
+    JNZ OTHER_PLAYER_ALL_ATTACKS
+    MOV SI, OFFSET MY_ATTACKS_ONTARGET 
+    MOV DI, OFFSET MY_ATTACKS_MISSED 
+    MOV CX, MY_ATTACKS_ONTARGET_NUM 
+    MOV DX, MY_ATTACKS_MISSED_NUM    
     JMP DRAW_ALL_ATTACKS
     
-    PLAYER2_ALL_ATTACKS:  
-         MOV SI, OFFSET P2_ATTACKS_ONTARGET 
-         MOV DI, OFFSET P2_ATTACKS_MISSED
-         MOV CX, P2_ATTACKS_ONTARGET_NUM 
-         MOV DX, P2_ATTACKS_MISSED_NUM  
+    OTHER_PLAYER_ALL_ATTACKS:  
+    MOV SI, OFFSET OTHER_PLAYER_ATTACKS_ONTARGET 
+    MOV DI, OFFSET OTHER_PLAYER_ATTACKS_MISSED
+    MOV CX, OTHER_PLAYER_ATTACKS_ONTARGET_NUM 
+    MOV DX, OTHER_PLAYER_ATTACKS_MISSED_NUM  
          
         DRAW_ALL_ATTACKS:
             ONTARGET_ATTACKS:
@@ -1736,38 +2038,28 @@ DRAW_ALL_X_SIGNS_   ENDP
 ;-------------------------------------; 
 DRAW_ALL_DESTROYED_SHIPS_  PROC NEAR
    
-   ;PARAMETERS AL: 1 OR 2 (PLAYER)
-    MOV CX,0
-    CMP AL, 1
-    JNZ PLAYER2_DESTROYED_SHIPS
-    MOV SI, OFFSET P1_SHIPS_POINTS
-    MOV DI, OFFSET P1_SHIPS_REMAINING_CELLS
-    JMP DRAW_DESTROYED_SHIPS
+    MOV CL, OTHER_PLAYER_DESTROYED_SHIPS_NUM
+    MOV CH, 0
+    MOV SI, OFFSET OTHER_PLAYER_DESTROYED_SHIPS
     
-    PLAYER2_DESTROYED_SHIPS:  
-        MOV SI, OFFSET P2_SHIPS_POINTS
-        MOV DI, OFFSET P2_SHIPS_REMAINING_CELLS
-            
-        DRAW_DESTROYED_SHIPS:
-            MOV BL, BYTE PTR [DI]                     ;CHECK IF THE SHIP WAS DESTROYED AT FIRST
-            AND BL, BL
-            JNZ NEXT_DESTROYED_SHIP
-            MOV DX, WORD PTR [SI]
-            MOV GRID1_X, DX
-            MOV DX, WORD PTR [SI + 2]
-            MOV GRID1_Y, DX
-            MOV DX, WORD PTR [SI + 4]
-            MOV GRID2_X, DX
-            MOV DX, WORD PTR [SI + 6]
-            MOV GRID2_Y, DX
-            DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y, BLACK ,BLACK
-            
-            NEXT_DESTROYED_SHIP:
-            ADD SI, 8
-            INC DI
-            INC CX
-            CMP CX, N_SHIPS
-            JNZ DRAW_DESTROYED_SHIPS
+    CMP CX, 0
+    JE FINISH_DESTROYED_SHIPS
+    
+    DRAW_DESTROYED_SHIPS:
+    MOV DX, WORD PTR [SI]
+    MOV GRID1_X, DX
+    MOV DX, WORD PTR [SI + 2]
+    MOV GRID1_Y, DX
+    MOV DX, WORD PTR [SI + 4]
+    MOV GRID2_X, DX
+    MOV DX, WORD PTR [SI + 6]
+    MOV GRID2_Y, DX
+    DRAW_SHIP GRID1_X, GRID1_Y, GRID2_X, GRID2_Y, BLACK ,BLACK
+
+    ADD SI, 8
+    LOOP DRAW_DESTROYED_SHIPS
+    
+    FINISH_DESTROYED_SHIPS:
     RET
 
 DRAW_ALL_DESTROYED_SHIPS_  ENDP
@@ -1808,111 +2100,88 @@ DRAW_ALL_DESTROYED_SHIPS_  ENDP
 ;-----------------------------------------;
 
  CELL_HAS_SHIP_   PROC    NEAR
-   
-    MOV CX,0
-    CMP AL, 1
-    JNZ CHECK_PLAYER2_SHIPS
-    MOV SI, OFFSET P1_SHIPS_POINTS
-    MOV DI, OFFSET P1_SHIPS_IS_VERTICAL  
-    JMP CHECK_ALL_SHIPS
-    
-    CHECK_PLAYER2_SHIPS:
-           MOV SI, OFFSET P2_SHIPS_POINTS
-           MOV DI, OFFSET P2_SHIPS_IS_VERTICAL 
-           CHECK_ALL_SHIPS:
-                
-                CHECK_SHIP:
-                MOV BX, [DI]              
-                CMP BX ,1                 
-                JNZ HORIZONTAL_SHIP        
-                
-                MOV  AX, GRID1_X
-                CMP  AX ,  WORD PTR[SI]
-                JNZ  EDIT_AND_CHECK_AGAIN  
-                MOV  AX, GRID1_Y
-                CMP  AX , WORD PTR[SI + 2]                       
-                JB EDIT_AND_CHECK_AGAIN
-                CMP  AX , WORD PTR[SI + 6] 
-                JA  EDIT_AND_CHECK_AGAIN
-                JBE THE_ATTACK_WAS_ON_TARGET
+  
+     MOV CX,0
+     MOV SI, OFFSET SHIPS_POINTS
+     MOV DI, OFFSET SHIPS_IS_VERTICAL       
+          
+          CHECK_SHIP:
+          MOV BX, [DI]              
+          CMP BX ,1                 
+          JNZ HORIZONTAL_SHIP
+          
+          MOV  AX, GRID1_X
+          CMP  AX ,  WORD PTR[SI]
+          JNE  EDIT_AND_CHECK_AGAIN  
+          MOV  AX, GRID1_Y
+          CMP  AX , WORD PTR[SI + 2]                       
+          JB EDIT_AND_CHECK_AGAIN
+          CMP  AX , WORD PTR[SI + 6] 
+          JA  EDIT_AND_CHECK_AGAIN
+          JBE THE_ATTACK_WAS_ON_TARGET
              
-                
-                
-                HORIZONTAL_SHIP:  
-                MOV  AX, GRID1_Y
-                CMP  AX ,  WORD PTR[SI + 2]
-                JNZ  EDIT_AND_CHECK_AGAIN  
-                MOV  AX, GRID1_X      
-                CMP AX , WORD PTR[SI]                      
-                JB EDIT_AND_CHECK_AGAIN
-                CMP AX , WORD PTR[SI + 4]
-                JA  EDIT_AND_CHECK_AGAIN
-                JBE THE_ATTACK_WAS_ON_TARGET
+          HORIZONTAL_SHIP:  
+          MOV  AX, GRID1_Y
+          CMP  AX ,  WORD PTR[SI + 2]
+          JNE  EDIT_AND_CHECK_AGAIN 
+          MOV  AX, GRID1_X      
+          CMP AX , WORD PTR[SI]                      
+          JB EDIT_AND_CHECK_AGAIN
+          CMP AX , WORD PTR[SI + 4]
+          JA  EDIT_AND_CHECK_AGAIN
+          JBE THE_ATTACK_WAS_ON_TARGET
               
                 
-                THE_ATTACK_WAS_ON_TARGET:
-                MOV IS_ONTARGET,1
-                MOV SHIP_INDEX , CL
-                RET
-                
-                EDIT_AND_CHECK_AGAIN:
-                ADD SI ,8
-                ADD DI,2
-                INC CX
-                CMP CX ,N_SHIPS
-                JNZ CHECK_SHIP
-                MOV IS_ONTARGET,0
-                RET  
-
-                    
+          THE_ATTACK_WAS_ON_TARGET:
+          MOV IS_ONTARGET,1
+          MOV SHIP_INDEX , CL
+          RET
+               
+          EDIT_AND_CHECK_AGAIN:
+          ADD SI, 8
+          ADD DI, 2
+          INC CX
+          CMP CX ,N_SHIPS
+          JNZ CHECK_SHIP
+          MOV IS_ONTARGET,0
+          RET  
+          
   CELL_HAS_SHIP_   ENDP
 ;-------------------------------------; 
 IS_CELL_ATTACKED_BEFORE_  PROC NEAR
     
-   ;PARAMETERS AL: 1 OR 2 (PLAYER)
     MOV BX,0
-    CMP AL, 1
-    JNZ CHECK_PLAYER2_ALL_ATTACKS
-    MOV SI, OFFSET P1_ATTACKS_ONTARGET 
-    MOV DI, OFFSET P1_ATTACKS_MISSED 
-    MOV CX, P1_ATTACKS_ONTARGET_NUM 
-    MOV DX, P1_ATTACKS_MISSED_NUM    
-    JMP CHECK_ALL_ATTACKS
-    
-    CHECK_PLAYER2_ALL_ATTACKS:  
-         MOV SI, OFFSET P2_ATTACKS_ONTARGET 
-         MOV DI, OFFSET P2_ATTACKS_MISSED
-         MOV CX, P2_ATTACKS_ONTARGET_NUM 
-         MOV DX, P2_ATTACKS_MISSED_NUM 
+    MOV SI, OFFSET OTHER_PLAYER_ATTACKS_ONTARGET 
+    MOV DI, OFFSET OTHER_PLAYER_ATTACKS_MISSED
+    MOV CX, OTHER_PLAYER_ATTACKS_ONTARGET_NUM 
+    MOV DX, OTHER_PLAYER_ATTACKS_MISSED_NUM 
          
-         CHECK_ALL_ATTACKS:
-               CMP CX ,0
-               JZ CHECK_MISSED_ATTACKS
-               MOV AX, [SI]
-               CMP AX,ATTACKX                       
-               JNZ CHECK_NEXT_ATTACK1
-               MOV AX, [SI + 2]
-               CMP AX,ATTACKY
-               JNZ CHECK_NEXT_ATTACK1
-               MOV IS_ATTACKED_BEFORE,1
-               RET      
-               CHECK_NEXT_ATTACK1:  
-                   ADD SI,4
-                   DEC CX 
-                   JMP CHECK_ALL_ATTACKS
-        
-          CHECK_MISSED_ATTACKS:     
-               MOV SI,DI
-               MOV CX,DX
-               INC BX
-               CMP BX,2                   ;AX IS USED TO REPEAT THE OPERATION TWICE (ONE FOR MISSED AND ONE FOR ONYARGET)
-               JNZ CHECK_ALL_ATTACKS
-              
-          
-                
-               MOV IS_ATTACKED_BEFORE,0
-               RET      
-           
+    CHECK_ALL_ATTACKS:
+    CMP CX ,0
+    JZ CHECK_MISSED_ATTACKS
+    MOV AX, [SI]
+    CMP AX,ATTACKX                       
+    JNZ CHECK_NEXT_ATTACK1
+    MOV AX, [SI + 2]
+    CMP AX,ATTACKY
+    JNZ CHECK_NEXT_ATTACK1
+    MOV IS_ATTACKED_BEFORE,1
+    RET      
+    CHECK_NEXT_ATTACK1:  
+    ADD SI,4
+    DEC CX 
+    JMP CHECK_ALL_ATTACKS
+                                                
+    CHECK_MISSED_ATTACKS:     
+    MOV SI,DI
+    MOV CX,DX
+    INC BX
+    CMP BX,2                   ;AX IS USED TO REPEAT THE OPERATION TWICE (ONE FOR MISSED AND ONE FOR ONYARGET)
+    JNZ CHECK_ALL_ATTACKS
+                                                                                        
+    MOV IS_ATTACKED_BEFORE,0
+    RET      
+                                               
 
 IS_CELL_ATTACKED_BEFORE_   ENDP
 ;-------------------------------------; 
@@ -1923,11 +2192,20 @@ GET_CELL_FROM_PLAYER_  PROC NEAR
          DRAW_SLIDER_BAR
          FIRE_SLIDER                      ;IT MODIFY  SLIDER_CURRENT_ROW
          PIXELS_TO_GRID COLUMN_SELECTOR_CURRENT_COLUMN , SLIDER_CURRENT_ROW , ATTACKX , ATTACKY
-         MOV AX , ATTACKX
-         MOV [SI] , AX
-         MOV BX , ATTACKY
-         MOV [DI] , BX
+         
+
+         MOV AX , ATTACKX   
+         MOV AH , 0   
+         MOV WORD PTR[SI], AX        ;PUT IT IN THE FUNCTION PARAMETER TO BE USED LATER
+         MOV ATTACKX,AX
+
+         MOV AX , ATTACKY
+         MOV AH , 0
+         MOV WORD PTR[DI], AX        ;PUT IT IN THE FUNCTION PARAMETER TO BE USED LATER
+         MOV ATTACKY,AX
+         
          RET
+         
 GET_CELL_FROM_PLAYER_   ENDP
 ;-------------------------------------;
  
@@ -1941,152 +2219,229 @@ EVENORODD_  PROC NEAR
     RET                  
 EVENORODD_   ENDP
 ;-----------------------------------------;
-CHECK_CELL_AND_UPDATE_ATTACKS_DATA_  PROC NEAR
+ATTACKED_CHECK_CELL_AND_UPDATE_ATTACKS_DATA_  PROC NEAR
 
-    CMP IS_REVERSE_ATTACK_ACTIVATED , 1
-    JNZ NO_REVERSE_ATTACK
-    CMP IS_REVERSE_COUNT , 1
-    JNZ NO_REVERSE_ATTACK
+;;;;;;;;;;;;;;;; POWER UPS;;;;;;;;;;;;;;;;;
+    ;CMP IS_REVERSE_ATTACK_ACTIVATED , 1
+    ;JNZ NO_REVERSE_ATTACK
+    ;CMP IS_REVERSE_COUNT , 1
+    ;JNZ NO_REVERSE_ATTACK
     
-    MOV AL , PLAYER_ATTACKED     ;REVERSE THE ATTACK
-    MOV BL , PLAYER_ATTACKING
-    MOV PLAYER_ATTACKED  , BL
-    MOV PLAYER_ATTACKING , AL  
-    INC IS_REVERSE_COUNT
+    ;MOV AL , PLAYER_ATTACKED     ;REVERSE THE ATTACK
+    ;MOV BL , PLAYER_ATTACKING
+    ;MOV PLAYER_ATTACKED  , BL
+    ;MOV PLAYER_ATTACKING , AL  
+    ;INC IS_REVERSE_COUNT
 
-    NO_REVERSE_ATTACK:
-    IS_CELL_ON_GRID
+    ;NO_REVERSE_ATTACK:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
+    IS_CELL_ON_GRID      ;-----> FIRST CHECK
+
     CMP IS_ON_GRID, 0
-    JZ DATA_UPDATED
+    JZ ATTACKED_DATA_UPDATED
    
-    IS_CELL_ATTACKED_BEFORE PLAYER_ATTACKING
-     CELL_HAS_SHIP ATTACKX , ATTACKY ,PLAYER_ATTACKED
+    IS_CELL_ATTACKED_BEFORE PLAYER_ATTACKING        ;-----> SECOND CHECK
+    CELL_HAS_SHIP ATTACKX , ATTACKY     ;-----> THIRD CHECK
     
     CMP IS_ATTACKED_BEFORE , 1
-    JZ DATA_UPDATED                    ;NO DATA NEEDS TO BE UPDATED IF PLAYER CHOOSE A CELL TWICE
-    
-    CMP PLAYER_ATTACKED , 2
-    JNZ PLAYER1_IS_ATTACKED
-    
-    PLAYER2_IS_ATTACKED:   
-        CMP IS_ONTARGET , 1
-        JNZ PLAYER1_ATTACK_MISSED
-    
-    PLAYER1_ATTACK_ONTARGET:
-        MOV SI , OFFSET P2_SCORE
-        DEC BYTE PTR [SI]         ;DECREMENT THE SCORE
-        PRINT_PLAYER2_SCORE
+    JZ ATTACKED_DATA_UPDATED                    ;NO DATA NEEDS TO BE UPDATED IF PLAYER CHOOSE A CELL TWICE
 
-        MOV BP , OFFSET P2_SHIPS_REMAINING_CELLS  ;DECREMENT THE REMAINING CELL
-        MOV DL , SHIP_INDEX  
-        MOV DH , 0
-        ADD BP , DX
-        DEC BYTE PTR DS:[BP]
-        
-        
-        MOV BX, OFFSET P1_ATTACKS_ONTARGET
-        MOV SI, OFFSET P1_ATTACKS_ONTARGET_NUM
-        DRAW_X_SIGN ATTACKX, ATTACKY,0CH
-
-       JMP EDIT_DATA 
-  
-    PLAYER1_ATTACK_MISSED:
-        MOV BX, OFFSET P1_ATTACKS_MISSED
-        MOV SI, OFFSET P1_ATTACKS_MISSED_NUM
-        DRAW_X_SIGN ATTACKX,ATTACKY,00H 
-        JMP EDIT_DATA 
-    
-    PLAYER1_IS_ATTACKED:
-        CMP IS_ONTARGET , 1
-        JNZ PLAYER2_ATTACK_MISSED
-    
-    PLAYER2_ATTACK_ONTARGET:
-        MOV SI , OFFSET P1_SCORE
-        MOV CX ,[SI]         ;DECREMENT THE SCORE
-        DEC CX 
-        MOV [SI] , CX 
-        PRINT_PLAYER1_SCORE
-        
-        MOV BP , OFFSET P1_SHIPS_REMAINING_CELLS
-        MOV DL , SHIP_INDEX
-        MOV DH , 0
-        ADD BP , DX
-        DEC BYTE PTR DS:[BP]
+    CMP IS_ONTARGET , 1
+    JNZ ATTACKER_ATTACK_IS_MISSED
       
-        
-        MOV BX, OFFSET P2_ATTACKS_ONTARGET
-        MOV SI, OFFSET P2_ATTACKS_ONTARGET_NUM
-        DRAW_X_SIGN ATTACKX, ATTACKY,0CH
-        JMP EDIT_DATA  
+    MOV SI , OFFSET MY_SCORE
+    DEC BYTE PTR [SI]                ;DECREMENT MY SCORE
+    PRINT_MY_SCORE
+
+    MOV BP , OFFSET SHIPS_REMAINING_CELLS  ;DECREMENT THE REMAINING CELL
+    MOV DL , SHIP_INDEX  
+    MOV DH , 0
+    ADD BP , DX
+    DEC BYTE PTR DS:[BP]
+    MOV CL ,0
+    CMP DS:[BP], CL                        ;IF THE SHIP IS DESTROYED SEND ITS DATA TO THE OTHER PLAYER
+    JNZ THE_SHIP_ISNOT_DESTROYED
+    
+    MOV BX, OFFSET IS_DESTROYED
+    MOV CX, 1
+    MOV [BX], CX
+    
+    MOV SI ,OFFSET SHIPS_POINTS
+    MOV AL , SHIP_INDEX
+    MOV BL , 8
+    MUL BL
+    ADD SI , AX 
+    MOV DX, WORD PTR [SI]
+    MOV DESTROYED_X1, DX
+    MOV DX, WORD PTR [SI + 2]
+    MOV DESTROYED_Y1, DX
+    MOV DX, WORD PTR [SI + 4]
+    MOV DESTROYED_X2, DX
+    MOV DX, WORD PTR [SI + 6]
+    MOV DESTROYED_Y2, DX
+
+ 
+    THE_SHIP_ISNOT_DESTROYED:    
+    MOV BX, OFFSET OTHER_PLAYER_ATTACKS_ONTARGET
+    MOV SI, OFFSET OTHER_PLAYER_ATTACKS_ONTARGET_NUM
+    DRAW_X_SIGN ATTACKX, ATTACKY,0CH
+    JMP EDIT_ATTACKED_PLAYER_DATA 
   
-    PLAYER2_ATTACK_MISSED:
-        MOV BX, OFFSET P2_ATTACKS_MISSED
-        MOV SI, OFFSET P2_ATTACKS_MISSED_NUM
-        DRAW_X_SIGN ATTACKX,ATTACKY,00H
-        
-        EDIT_DATA:  
-            MOV AX, [SI]         ;INCREMENT NUMBER OF MISSED OR ONTARGET ATTACKS
-            INC AX 
-            MOV [SI] , AX
-            DEC AX
-            
-            MOV CL , 04H         ;PUT THE CELL IN ONTARGET OR MISSED ( PLAYER 1 OR 2) ARRAY OF ATTACKS 
-            MUL CL
-            ADD BX,AX 
-            MOV CX ,ATTACKX 
-            MOV [BX] , CX
-            MOV CX ,ATTACKY 
-            MOV [BX + 2] ,CX  
-            JMP DATA_UPDATED
-            
-    DATA_UPDATED:
+    ATTACKER_ATTACK_IS_MISSED:
+    MOV BX, OFFSET OTHER_PLAYER_ATTACKS_MISSED
+    MOV SI, OFFSET OTHER_PLAYER_ATTACKS_MISSED_NUM
+    DRAW_X_SIGN ATTACKX,ATTACKY,00H 
+    
+
+    EDIT_ATTACKED_PLAYER_DATA: 
+    MOV AX, [SI]         ;INCREMENT NUMBER OF MISSED OR ONTARGET ATTACKS
+    INC AX 
+    MOV [SI] , AX
+    DEC AX
+    
+    MOV CL , 04H         ;PUT THE CELL IN ONTARGET OR MISSED OTHER PLAYER ARRAY OF ATTACKS 
+    MUL CL
+    ADD BX,AX 
+    MOV CX ,ATTACKX 
+    MOV [BX] , CX
+    MOV CX ,ATTACKY 
+    MOV [BX + 2] ,CX  
+          
+    ATTACKED_DATA_UPDATED:
     RET
                   
-CHECK_CELL_AND_UPDATE_ATTACKS_DATA_   ENDP
+ATTACKED_CHECK_CELL_AND_UPDATE_ATTACKS_DATA_   ENDP
+;-----------------------------------------;
+ATTACKER_UPDATE_ATTACKS_DATA_  PROC NEAR
+
+;;;;;;;;;;;;;;;; POWER UPS;;;;;;;;;;;;;;;;;
+    ;;CMP IS_REVERSE_ATTACK_ACTIVATED , 1
+    ;JNZ NO_REVERSE_ATTACK2
+    ;CMP IS_REVERSE_COUNT , 1
+    ;JNZ NO_REVERSE_ATTACK2
+    
+    ;MOV AL , PLAYER_ATTACKED     ;REVERSE THE ATTACK
+    ;MOV BL , PLAYER_ATTACKING
+    ;MOV PLAYER_ATTACKED  , BL
+    ;MOV PLAYER_ATTACKING , AL  
+    ;INC IS_REVERSE_COUNT
+
+    ;NO_REVERSE_ATTACK2:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   
+    CMP IS_ON_GRID, 0
+    JZ ATTACKER_DATA_UPDATED
+
+    CMP IS_ATTACKED_BEFORE , 1
+    JZ ATTACKER_DATA_UPDATED                    ;NO DATA NEEDS TO BE UPDATED IF PLAYER CHOOSE A CELL TWICE
+
+    CMP IS_ONTARGET , 1
+    JNZ MY_ATTACK_IS_MISSED
+      
+    MOV SI , OFFSET OTHER_PLAYER_SCORE
+    DEC BYTE PTR [SI]                    ;DECREMENT THE OTHER PLAYER SCORE
+    PRINT_OTHER_PLAYER_SCORE
+
+    MOV BX, OFFSET MY_ATTACKS_ONTARGET
+    MOV SI, OFFSET MY_ATTACKS_ONTARGET_NUM
+    DRAW_X_SIGN ATTACKX, ATTACKY,0CH
+    
+    CMP IS_DESTROYED, 1            ;IF THE SHIP IS DESTROYED PUT ITS DATA INTO DESTROYD ARRAY
+    JNE EDIT_ATTACKER_DATA
+    MOV DI, OFFSET OTHER_PLAYER_DESTROYED_SHIPS
+    MOV Cl, OTHER_PLAYER_DESTROYED_SHIPS_NUM
+    MOV AL, 8
+    MUL CL
+    ADD DI, AX
+    
+    MOV DX, DESTROYED_X1
+    MOV [DI] , DX
+    MOV DX, DESTROYED_Y1
+    MOV [DI + 2], DX
+    MOV DX, DESTROYED_X2
+    MOV [DI + 4] , DX
+    MOV DX, DESTROYED_Y2
+    MOV [DI + 6], DX
+    
+    MOV CH,0
+    INC CX                    ;UPDATE THE PTR AND RETURN IS_DESTROYED TO BE ZERO AGAIN
+    MOV OTHER_PLAYER_DESTROYED_SHIPS_NUM, CL
+    MOV IS_DESTROYED, 0
+    JMP EDIT_ATTACKER_DATA 
+  
+    MY_ATTACK_IS_MISSED:
+    MOV BX, OFFSET MY_ATTACKS_MISSED
+    MOV SI, OFFSET MY_ATTACKS_MISSED_NUM
+    DRAW_X_SIGN ATTACKX,ATTACKY,00H 
+
+    EDIT_ATTACKER_DATA: 
+    MOV AX, [SI]         ;INCREMENT NUMBER OF MISSED OR ONTARGET ATTACKS
+    INC AX 
+    MOV [SI] , AX
+    DEC AX
+    
+    MOV CL , 04H         ;PUT THE CELL IN ONTARGET OR MISSED MY ARRAY OF ATTACKS 
+    MUL CL
+    ADD BX,AX 
+    MOV CX ,ATTACKX 
+    MOV [BX] , CX
+    MOV CX ,ATTACKY 
+    MOV [BX + 2] ,CX  
+   
+    ATTACKER_DATA_UPDATED:
+    RET
+                  
+ATTACKER_UPDATE_ATTACKS_DATA_   ENDP
 ;-------------------------------------; 
 SCENE1_PLAYER_ATTACKS_  PROC NEAR
     
     CLEAR_GAME_SCREEN   WHITE
     DRAW_GRID
-    DRAW_ALL_DESTROYED_SHIPS PLAYER_ATTACKED
-    DRAW_ALL_X_SIGNS PLAYER_ATTACKING
-    DRAW_POWER_UPS  PLAYER_ATTACKING
+    DRAW_ALL_DESTROYED_SHIPS  
+    DRAW_ALL_X_SIGNS MY_INDEX
+    DRAW_POWER_UPS 
     RET
                 
 SCENE1_PLAYER_ATTACKS_   ENDP
 ;-----------------------------------------;
 SCENE2_PLAYER_WATCHES_  PROC NEAR
+    ;---------------POWER UPS ----------------
     MOV AL, 0
-    CMP IS_REVERSE_ATTACK_ACTIVATED, 1
-    JNZ ANNOUNCE_OTHER_PLAYER_TURN
-    CMP IS_REVERSE_COUNT, 2
-    JNZ ANNOUNCE_OTHER_PLAYER_TURN
-    JMP VIEW_OWN_DAMAGE
+    ;CMP IS_REVERSE_ATTACK_ACTIVATED, 1
+    ;JNZ VIEW_PLAYER_SHIPS
+    ;CMP IS_REVERSE_COUNT, 2
+    ;JNZ VIEW_PLAYER_SHIPS
+    ;JMP VIEW_OWN_DAMAGE
+    ;--------------------------------------
     
-    ANNOUNCE_OTHER_PLAYER_TURN:
-    CONCATENATE PLAYER_TURN, PLAYER_ATTACKED
-    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
-    PRESS_ENTER_TO_CONTINUE
-    PRINT_NOTIFICATION_MESSAGE  VIEW_SHIPS_MSG, 1
-    JMP VIEW_PLAYER_SHIPS
+    ;ANNOUNCE_OTHER_PLAYER_TURN:
+    ;CONCATENATE PLAYER_TURN, OTHER_PLAYER_INDEX
+    ;PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
+    ;PRESS_ENTER_TO_CONTINUE  
+    ;JMP VIEW_PLAYER_SHIPS
     
-    VIEW_OWN_DAMAGE:
-    MOV AL, 1
-    PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 1
+   ;---------------POWER UPS ----------------
+   ; VIEW_OWN_DAMAGE:
+   ; MOV AL, 1
+   ;PRINT_NOTIFICATION_MESSAGE  PRESS_ENTER_MSG, 1
+    ;--------------------------------------
     
     VIEW_PLAYER_SHIPS:
     CLEAR_GAME_SCREEN   WHITE
+    PRINT_NOTIFICATION_MESSAGE  VIEW_SHIPS_MSG, 1
     DRAW_GRID
-    DRAW_ALL_SHIPS_ON_GRID PLAYER_ATTACKED
-    DRAW_ALL_X_SIGNS PLAYER_ATTACKING
-    
+    DRAW_ALL_SHIPS_ON_GRID 
+    DRAW_ALL_X_SIGNS OTHER_PLAYER_INDEX
+ ;---------------POWER UPS ----------------    
     ; ANNOUNCE OTHER PLAYER'S TURN IN CASE THIS TURN WAS REVERSED
-    CMP AL, 1
-    JNZ GO_TO_ATTACK_SCENE
-    PRESS_ENTER_TO_CONTINUE
-    CONCATENATE PLAYER_TURN, PLAYER_ATTACKING
-    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
-    PRESS_ENTER_TO_CONTINUE
+    ; CMP AL, 1
+    ;JNZ GO_TO_ATTACK_SCENE
+    ; PRESS_ENTER_TO_CONTINUE
+    ;CONCATENATE PLAYER_TURN, PLAYER_ATTACKING
+    ;PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
+    ;PRESS_ENTER_TO_CONTINUE
+    ;--------------------------------------
     
     GO_TO_ATTACK_SCENE:
     RET
@@ -2095,13 +2450,13 @@ SCENE2_PLAYER_WATCHES_   ENDP
 ;-----------------------------------------;
 IS_IT_THE_END_  PROC NEAR
     
-    CMP P1_SCORE , 0
-    JNZ CHECK_PLAYER_2_SCORE 
+    CMP MY_SCORE , 0
+    JNZ CHECK_OTHER_PLAYER_SCORE 
     MOV GAME_END , 1
     JMP THE_END_IS_NEAR
     
-    CHECK_PLAYER_2_SCORE:
-    CMP P2_SCORE , 0
+    CHECK_OTHER_PLAYER_SCORE:
+    CMP OTHER_PLAYER_SCORE , 0
     JNZ THE_END_IS_NEAR
     MOV GAME_END , 1   
     
@@ -2111,21 +2466,19 @@ IS_IT_THE_END_  PROC NEAR
 IS_IT_THE_END_   ENDP
 ;-----------------------------------------;
 REFRESH_DATA_  PROC NEAR
-    MOV P1_SCORE , TOTAL_N_CELLS 
-    MOV P2_SCORE , TOTAL_N_CELLS 
-    MOV P1_ATTACKS_ONTARGET_NUM ,0
-    MOV P1_ATTACKS_MISSED_NUM ,0 
-    MOV P2_ATTACKS_ONTARGET_NUM ,0 
-    MOV P2_ATTACKS_MISSED_NUM ,0
-    MOV PLAYER_ATTACKING ,1
-    MOV PLAYER_ATTACKED ,2
+    MOV MY_SCORE , TOTAL_N_CELLS 
+    MOV OTHER_PLAYER_SCORE , TOTAL_N_CELLS 
+    MOV MY_ATTACKS_ONTARGET_NUM ,0
+    MOV MY_ATTACKS_MISSED_NUM ,0 
+    MOV OTHER_PLAYER_ATTACKS_ONTARGET_NUM ,0 
+    MOV OTHER_PLAYER_ATTACKS_MISSED_NUM ,0
     MOV GAME_END,0
     MOV JUMP_COUNTER, 1
     MOV SLIDER_CURRENT_ROW, SLIDER_INITIAL_ROW
     ; RESET SHIPS POSITIONS
     MOV CX, 0
-    MOV SI, OFFSET P1_SHIPS_POINTS
-    MOV DI, OFFSET P2_SHIPS_POINTS
+    MOV SI, OFFSET SHIPS_POINTS
+    MOV DI, OFFSET SHIPS_POINTS
     RESET_SHIPS_POSITIONS:
         MOV WORD PTR [SI], -2
         MOV WORD PTR [DI], -2
@@ -2136,10 +2489,10 @@ REFRESH_DATA_  PROC NEAR
     JNZ RESET_SHIPS_POSITIONS
     ; RESET REMAINING CELLS
     MOV CX, 0
-    MOV SI, OFFSET P1_SHIPS_REMAINING_CELLS
-    MOV DI, OFFSET P1_SHIPS_SIZES
-    MOV BX, OFFSET P2_SHIPS_REMAINING_CELLS
-    MOV BP, OFFSET P2_SHIPS_SIZES
+    MOV SI, OFFSET SHIPS_REMAINING_CELLS
+    MOV DI, OFFSET SHIPS_SIZES
+    MOV BX, OFFSET SHIPS_REMAINING_CELLS
+    MOV BP, OFFSET SHIPS_SIZES
     RESET_REMAINING_CELLS:
         MOV AX, WORD PTR [DI]
         MOV BYTE PTR [SI], AL
@@ -2153,8 +2506,8 @@ REFRESH_DATA_  PROC NEAR
         CMP CX, N_SHIPS
     JNZ RESET_REMAINING_CELLS
     ; RESET POWER UPS
-    MOV SI, OFFSET P1_IS_USED
-    MOV DI, OFFSET P2_IS_USED
+    MOV SI, OFFSET MY_POWER_UPS_IS_USED
+    ;MOV DI, OFFSET P2_IS_USED
     MOV CX, 0
     RESET_IS_USED:
         MOV BYTE PTR [SI], 0
@@ -2164,20 +2517,20 @@ REFRESH_DATA_  PROC NEAR
         INC CX
         CMP CX, 3
     JNZ RESET_IS_USED
-    MOV P1_N_AVAILABLE_POWER_UPS, 3
-    MOV P2_N_AVAILABLE_POWER_UPS, 3
+    MOV MY_N_AVAILABLE_POWER_UPS, 3
     RET 
     
 REFRESH_DATA_   ENDP
 ;-----------------------------------------;
 PRINT_ATTACK_MSG_    PROC    NEAR
+    
     CMP IS_ON_GRID, 0
     JZ ATTACK_OUTSIDE_GRID
     
-    CMP IS_REVERSE_ATTACK_ACTIVATED, 1
-    JNZ CONTINUE_CHECKING
-    CMP IS_REVERSE_COUNT, 2
-    JZ ATTACK_IS_REVERSED
+    ;CMP IS_REVERSE_ATTACK_ACTIVATED, 1
+    ;JNZ CONTINUE_CHECKING
+    ; CMP IS_REVERSE_COUNT, 2
+    ;JZ ATTACK_IS_REVERSED
     
     CONTINUE_CHECKING:
     CMP IS_ATTACKED_BEFORE, 1
@@ -2186,85 +2539,114 @@ PRINT_ATTACK_MSG_    PROC    NEAR
     CMP IS_ONTARGET, 1
     JZ ATTACK_ON_TARGET
     
-    PRINT_NOTIFICATION_MESSAGE  NOT_ON_TARGET_MSG, 1
-    JMP WAIT_FOR_ENTER_GO_ON
+    CMP Al, 1
+    JNE NOT_ON_TARGET_FOR_ATTACKED
+    PRINT_NOTIFICATION_MESSAGE  NOT_ON_TARGET_MSG_ATTACKER, 1
+    JMP END_PRINT_ATTACK_MSG
+    NOT_ON_TARGET_FOR_ATTACKED:
+    PRINT_NOTIFICATION_MESSAGE  NOT_ON_TARGET_MSG_ATTACKED, 1
+    JMP END_PRINT_ATTACK_MSG
+    
     
     ATTACK_OUTSIDE_GRID:
-    PRINT_NOTIFICATION_MESSAGE  GRID_MISSED_MSG, 1
-    JMP WAIT_FOR_ENTER_GO_ON
+    CMP Al, 1
+    JNE GRID_MISSED_FOR_ATTACKED
+    PRINT_NOTIFICATION_MESSAGE  GRID_MISSED_MSG_ATTACKER, 1
+    JMP END_PRINT_ATTACK_MSG
+    GRID_MISSED_FOR_ATTACKED:
+    PRINT_NOTIFICATION_MESSAGE  GRID_MISSED_MSG_ATTACKED, 1
+    JMP END_PRINT_ATTACK_MSG
     
     ATTACK_NO_EFFECT:
-    PRINT_NOTIFICATION_MESSAGE  CELL_ALREADY_ATTACKED_MSG, 1
-    JMP WAIT_FOR_ENTER_GO_ON
+    CMP Al, 1
+    JNE ALREADY_ATTACKED_FOR_ATTACKED
+    PRINT_NOTIFICATION_MESSAGE  CELL_ALREADY_ATTACKED_MSG_ATTACKER, 1
+    JMP END_PRINT_ATTACK_MSG
+    ALREADY_ATTACKED_FOR_ATTACKED:
+    PRINT_NOTIFICATION_MESSAGE  CELL_ALREADY_ATTACKED_MSG_ATTACKED, 1
+    JMP END_PRINT_ATTACK_MSG
     
     ATTACK_IS_REVERSED:
     PRINT_NOTIFICATION_MESSAGE  YOUR_ATTACK_WAS_REVERSED_MSG, 1
-    JMP WAIT_FOR_ENTER_GO_ON
+    JMP END_PRINT_ATTACK_MSG
     
     ATTACK_ON_TARGET:
-    PRINT_NOTIFICATION_MESSAGE  ON_TARGET_MSG, 1
+    CMP Al, 1
+    JNE ON_TARGET_FOR_ATTACKED
+    PRINT_NOTIFICATION_MESSAGE  ON_TARGET_MSG_ATTACKER, 1
+    JMP END_PRINT_ATTACK_MSG
+    ON_TARGET_FOR_ATTACKED:
+    PRINT_NOTIFICATION_MESSAGE  ON_TARGET_MSG_ATTACKED, 1
     
-    WAIT_FOR_ENTER_GO_ON:
-    NOT_ENTER:
-    MOV AH,0                      ;WAIT FOR THE USER TO CLICK ENTER
-    INT 16H
-    CMP AH,EXIT_SCANCODE
-    JE PRE_EXIT_SCREEN
-    CMP AH,ENTER_SCANCODE
-    JNZ NOT_ENTER
+    END_PRINT_ATTACK_MSG:
     
     RET
 
 PRINT_ATTACK_MSG_    ENDP
-
 ;-----------------------------------------;
 
 START_THE_GAME_  PROC NEAR
+   
+    CMP IS_HOST, 1
+    JNE ATTACKED_STARTING
+    
 MAIN_LOOP:
+    
+    ATTACKER_STARTING:
+
     SCENE1_PLAYER_ATTACKS
     GET_CELL_FROM_PLAYER ATTACKX,ATTACKY
-    CHECK_CELL_AND_UPDATE_ATTACKS_DATA
+    SEND_ATTACK_COORD
+    RECEIEVE_ATTACK_RESULT
+    ATTACKER_UPDATE_ATTACKS_DATA
+    PRINT_ATTACK_MSG 1 ;--> 1 Print Attack Msg For ATTACKER
     
-    PRINT_ATTACK_MSG
+    CMP IS_MY_ATTACK_TWICE_ACTIVATED, 1
+    JNE NO_ATTACK_TWICE
+    MOV IS_MY_ATTACK_TWICE_ACTIVATED, 0
+    JMP ATTACKER_STARTING
     
-    CMP IS_ATTACK_TWICE_ACTIVATED ,1 
-    JNZ NO_ATTACK_TWICE
-    MOV IS_ATTACK_TWICE_ACTIVATED,0
-    JMP MAIN_LOOP
+    NO_ATTACK_TWICE:
+    MOVE_TO_NEXT_SCENE
     
-    NO_ATTACK_TWICE: 
-    SCENE2_PLAYER_WATCHES
-    
-    CMP IS_REVERSE_ATTACK_ACTIVATED , 1
-    JNZ NO_REVERSE_ATTACK_OR_REVERSE_IT2
-    CMP IS_REVERSE_COUNT , 0
-    JZ THE_REVERSE_WILL_BE_IN_THE_NEXT_TURN
-     
-    MOV AL , PLAYER_ATTACKED              ;RETURN EVERYTHING
-    MOV BL , PLAYER_ATTACKING
-    MOV PLAYER_ATTACKED  , BL
-    MOV PLAYER_ATTACKING , AL  
-    MOV IS_REVERSE_ATTACK_ACTIVATED, 0
-    MOV IS_REVERSE_COUNT , 0
-    JMP NO_REVERSE_ATTACK_OR_REVERSE_IT2
-    
-    THE_REVERSE_WILL_BE_IN_THE_NEXT_TURN:
-    INC IS_REVERSE_COUNT 
-    
-    NO_REVERSE_ATTACK_OR_REVERSE_IT2:
-    NOT_ENTER2:
-    MOV AH,0                        ;WAIT FOR THE USER TO CLICK ENTER
-    INT 16H
-    CMP AH,EXIT_SCANCODE
-    JE PRE_EXIT_SCREEN
-    CMP AH,ENTER_SCANCODE
-    JNZ NOT_ENTER2
-    
-    MOV AL ,PLAYER_ATTACKING        ;EXCHANGE THE TWO PLAYERS ROLE
-    MOV AH ,PLAYER_ATTACKED
-    MOV PLAYER_ATTACKING , AH
-    MOV PLAYER_ATTACKED , AL
    
+    ATTACKED_STARTING:
+    SCENE2_PLAYER_WATCHES
+    PRINT_NOTIFICATION_MESSAGE  IN_SECOND_ATTACK_MSG, 1
+    RECEIEVE_ATTACK_COORD    
+    ATTACKED_CHECK_CELL_AND_UPDATE_ATTACKS_DATA
+    SEND_ATTACK_RESULT
+    PRINT_ATTACK_MSG 2     ;--> 2 Print Attack Msg For ATTACKED
+    
+    CMP IS_OTHER_PLAYER_ATTACK_TWICE_ACTIVATED , 1
+    JNE NO_ATTACK_TWICE2
+    MOV IS_OTHER_PLAYER_ATTACK_TWICE_ACTIVATED, 0
+    JMP ATTACKED_STARTING
+    
+    NO_ATTACK_TWICE2:
+    MOVE_TO_NEXT_SCENE
+    
+    
+;;;;;;;;;;;; Power UPS ;;;;;;;;;;;;;;;;;    
+    ;CMP IS_REVERSE_ATTACK_ACTIVATED , 1
+    ;JNZ NO_REVERSE_ATTACK_OR_REVERSE_IT2
+    ;CMP IS_REVERSE_COUNT , 0
+    ;JZ THE_REVERSE_WILL_BE_IN_THE_NEXT_TURN
+     
+    ;MOV AL , PLAYER_ATTACKED              ;RETURN EVERYTHING
+    ;MOV BL , PLAYER_ATTACKING
+    ;MOV PLAYER_ATTACKED  , BL
+    ;MOV PLAYER_ATTACKING , AL  
+    ;MOV IS_REVERSE_ATTACK_ACTIVATED, 0
+    ;MOV IS_REVERSE_COUNT , 0
+    ;JMP NO_REVERSE_ATTACK_OR_REVERSE_IT2
+    
+    ;THE_REVERSE_WILL_BE_IN_THE_NEXT_TURN:
+    ;INC IS_REVERSE_COUNT 
+    
+    ; NO_REVERSE_ATTACK_OR_REVERSE_IT2:
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 
     IS_IT_THE_END 
     
     CMP GAME_END , 1
@@ -2399,8 +2781,8 @@ FIRE_SLIDER_    PROC    NEAR
         INT 16H
         JZ MOVE_SLIDER
         ; GET KEY PRESSED
-        MOV AH, 0
-        INT 16H
+        WAIT_FOR_KEY
+        MOV AH,KEY_PRESSED     
         CMP AH,EXIT_SCANCODE
         JE PRE_EXIT_SCREEN
         CMP AH, SPACE_SCANCODE
@@ -2455,25 +2837,31 @@ DRAW_STATUS_BAR_TEMPLATE_   PROC    NEAR
     CMP CX,800  ;ENDING AT THE RIGHT EDGE
     JNZ LOOP2
 
-    PRINT_MESSAGE P1_USERNAME+1,2000H,0FH
-    PRINT_MESSAGE P2_USERNAME+1,2100H,0FH
+    PRINT_MESSAGE MY_USERNAME+1,2000H,0FH
+    MOV DH,20H
+    MOV DL,MY_USERNAME+1
+    PRINT_MESSAGE CHAT_CONSTANT,DX,0FH
+    PRINT_MESSAGE OTHER_PLAYER_USERNAME+1,2100H,0FH
+    MOV DH,21H
+    MOV DL,OTHER_PLAYER_USERNAME+1
+    PRINT_MESSAGE CHAT_CONSTANT,DX,0FH
 ;SCORE BAR                       
     ;PLAYER 1 SCORE
-    PRINT_MESSAGE P1_USERNAME+1,1E00H,0FH
+    PRINT_MESSAGE MY_USERNAME+1,1E00H,0FH
     
     MOV DH,1EH ;Y
-    MOV DL,P1_USERNAME+1  ;X
+    MOV DL,MY_USERNAME+1  ;X
     PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
 
     ;PLAYER 2 SCORE
-    PRINT_MESSAGE P2_USERNAME+1,1E40H,0FH
+    PRINT_MESSAGE OTHER_PLAYER_USERNAME+1,1E40H,0FH
     
     MOV DH,1EH ;Y
-    MOV DL,P2_USERNAME+1  ;X
+    MOV DL,OTHER_PLAYER_USERNAME+1  ;X
     ADD DL,40H
     PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
-    PRINT_PLAYER1_SCORE
-    PRINT_PLAYER2_SCORE
+    PRINT_MY_SCORE
+    PRINT_OTHER_PLAYER_SCORE
     RET
 DRAW_STATUS_BAR_TEMPLATE_   ENDP
 ;-----------------------------------------;
@@ -2507,54 +2895,83 @@ PRINT_NOTIFICATION_MESSAGE_   PROC    NEAR
 PRINT_NOTIFICATION_MESSAGE_   ENDP
 ;-----------------------------------------;
 
-PRINT_PLAYER1_SCORE_   PROC    NEAR
+PRINT_MY_SCORE_   PROC    NEAR
     
     ;DECIMAL_TO_STRING:
     MOV AX,0
-    MOV AL,P1_SCORE
+    MOV AL,MY_SCORE
     MOV BL,10
     DIV BL
-    MOV P1_SCORE_STRING, AL
-    MOV P1_SCORE_STRING+1, AH
-    ADD P1_SCORE_STRING,48
-    ADD P1_SCORE_STRING+1,48
+    MOV MY_SCORE_STRING, AL
+    MOV MY_SCORE_STRING+1, AH
+    ADD MY_SCORE_STRING,48
+    ADD MY_SCORE_STRING+1,48
 
     MOV AX,1301H
     MOV DH,1EH ;Y
-    MOV DL,P1_USERNAME+1 ;X
+    MOV DL,MY_USERNAME+1 ;X
     ADD DL,10
-    MOV BP,OFFSET P1_SCORE_STRING
+    MOV BP,OFFSET MY_SCORE_STRING
     MOV CX,2         ;SIZE
     MOV BX,000FH
     INT 10H
  
     RET
-PRINT_PLAYER1_SCORE_   ENDP
+PRINT_MY_SCORE_   ENDP
 ;-----------------------------------------;
 
-PRINT_PLAYER2_SCORE_   PROC    NEAR
+PRINT_CHAT_MESSAGE_   PROC    NEAR
+;INDEX = 1 -> PLAYER1 CHAT AREA
+;INDEX = 2 -> PLAYER2 CHAT AREA
+;PRINTS CHAT MESSAGES
+    
+    CMP AL,2
+    JE PLAYER2_CHAT_AREA
+    MOV DH,20H
+    MOV DL,MY_USERNAME+1
+    INC DL ;CONSIDERING EACH NAME HAS ":' AFTER IT
+    JMP PRINT_CHAT_MSG
+PLAYER2_CHAT_AREA:
+    MOV DH,21H
+    MOV DL,OTHER_PLAYER_USERNAME+1
+    INC DL ;CONSIDERING EACH NAME HAS ":' AFTER IT
+    
+PRINT_CHAT_MSG:
+    MOV AX,1301H
+    MOV BP,BX
+    INC BP
+    MOV CL,[BX]
+    MOV CH,00H
+    MOV BX,000FH
+    INT 10H 
+ 
+    RET
+PRINT_CHAT_MESSAGE_   ENDP
+;-----------------------------------------;
+
+PRINT_OTHER_PLAYER_SCORE_   PROC    NEAR
     
     ;DECIMAL_TO_STRING:
     MOV AX,0
-    MOV AL,P2_SCORE
+    MOV AL,OTHER_PLAYER_SCORE
     MOV BL,10
     DIV BL
-    MOV P2_SCORE_STRING, AL
-    MOV P2_SCORE_STRING+1, AH
-    ADD P2_SCORE_STRING,48
-    ADD P2_SCORE_STRING+1,48
+    MOV OTHER_PLAYER_SCORE_STRING, AL
+    MOV OTHER_PLAYER_SCORE_STRING+1, AH
+    ADD OTHER_PLAYER_SCORE_STRING,48
+    ADD OTHER_PLAYER_SCORE_STRING+1,48
 
     MOV AX,1301H
     MOV DH,1EH ;Y
-    MOV DL,P2_USERNAME+1 ;X
+    MOV DL,OTHER_PLAYER_USERNAME+1 ;X
     ADD DL,4AH
-    MOV BP,OFFSET P2_SCORE_STRING
+    MOV BP,OFFSET OTHER_PLAYER_SCORE_STRING
     MOV CX,2         ;SIZE
     MOV BX,000FH
     INT 10H
  
     RET
-PRINT_PLAYER2_SCORE_   ENDP
+ PRINT_OTHER_PLAYER_SCORE_   ENDP
 ;-------------------------------------;
 CALCULATE_SELECTOR_INITIAL_POSITION_   PROC    NEAR
     
@@ -2580,7 +2997,7 @@ CALCULATE_SELECTOR_INITIAL_POSITION_   PROC    NEAR
 
 CHECK_FOR_SELECTOR_INITIAL_POSITION:
     MOV AX,0
-    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,SELECTED_PLAYER_SHIPS
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1
     NOT IS_ONTARGET ;NOW IS_ONTARGET = 1 MEANS AN EMPTY CELL
     MOV AL,IS_ONTARGET
     POSSIBLE_ORIENTATIONS_CHECKER ;CHECKS WHETHER THE SELECTOR WILL BE STUCK OR NOT (LITERALLY CORNER CASE)
@@ -2633,10 +3050,8 @@ CELLS_SELECTOR_   PROC    NEAR
     PRINT_NOTIFICATION_MESSAGE SELECTOR_STARTING_MSG,1
 WAIT_FOR_DIRECTION_KEY:
     DRAW_RECTANGLE SELECTOR_X1,SELECTOR_Y1,SELECTOR_X2,SELECTOR_Y2,RED
-    MOV AH,0
-    INT 16H
-    CMP AH,EXIT_SCANCODE
-    JE PRE_EXIT_SCREEN
+    WAIT_FOR_KEY
+    MOV AH , KEY_PRESSED
     CMP AH,ENTER_SCANCODE ;CHECKS IF THE USER HAS ALREADY CHOSEN THE FIRST CELL OF THE SELECTED SHIP
     JE SELECTOR_SECOND_POINT
     ;AFTER GETTING DIRECTION KEY, REMOVE THE OLD SELECTOR ICON, TO DRAW THE NEW ONE
@@ -2655,7 +3070,7 @@ SELECTOR_UP:
     JE WAIT_FOR_DIRECTION_KEY
     RECHECK_SELECTOR_UP:
     DEC SELECTOR_GRID_Y1     
-    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,SELECTED_PLAYER_SHIPS  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1 ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
     CMP IS_ONTARGET,0
     JE  SELECTOR_UP_CONTINUE
 ;IF THERE IS A SHIP,DO NOTHING (SHIP IS ON ONE OF THE BORDERS), OR JUMP OVER IT
@@ -2694,7 +3109,7 @@ SELECTOR_DOWN:
     JE  WAIT_FOR_DIRECTION_KEY
     RECHECK_SELECTOR_DOWN:
     INC SELECTOR_GRID_Y1     
-    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,SELECTED_PLAYER_SHIPS  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
     CMP IS_ONTARGET,0
     JE  SELECTOR_DOWN_CONTINUE
 ;IF THERE IS A SHIP,DO NOTHING (SHIP IS ON ONE OF THE BORDERS), OR JUMP OVER IT
@@ -2733,7 +3148,7 @@ SELECTOR_LEFT:
     JE  WAIT_FOR_DIRECTION_KEY
     RECHECK_SELECTOR_LEFT:
     DEC SELECTOR_GRID_X1     
-    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,SELECTED_PLAYER_SHIPS  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
     CMP IS_ONTARGET,0
     JE  SELECTOR_LEFT_CONTINUE
 ;IF THERE IS A SHIP,DO NOTHING (SHIP IS ON ONE OF THE BORDERS), OR JUMP OVER IT
@@ -2772,7 +3187,7 @@ SELECTOR_RIGHT:
     JE  WAIT_FOR_DIRECTION_KEY
     RECHECK_SELECTOR_RIGHT:
     INC SELECTOR_GRID_X1     
-    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1,SELECTED_PLAYER_SHIPS  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
+    CELL_HAS_SHIP SELECTOR_GRID_X1,SELECTOR_GRID_Y1  ;CHECKS WHETHER THE CELL HAS A SHIP PLACED ON IT OR NOT
     CMP IS_ONTARGET,0
     JE  SELECTOR_RIGHT_CONTINUE
 ;IF THERE IS A SHIP,DO NOTHING (SHIP IS ON ONE OF THE BORDERS), OR JUMP OVER IT
@@ -2895,10 +3310,8 @@ CHECK_POSSIBLE_ORIENTATION:
         JNE GET_SECOND_POINT
         PRINT_NOTIFICATION_MESSAGE NO_POSSIBLE_ORIENTATION,1
         WAIT_FOR_ENTER_TO_WAIT_FOR_DIRECTION_KEY:
-        MOV AH, 0
-        INT 16H
-        CMP AH,EXIT_SCANCODE
-        JE PRE_EXIT_SCREEN
+        WAIT_FOR_KEY
+        MOV AH , KEY_PRESSED
         CMP AH, ENTER_SCANCODE
         JNZ WAIT_FOR_ENTER_TO_WAIT_FOR_DIRECTION_KEY
         PRINT_NOTIFICATION_MESSAGE SELECTOR_STARTING_MSG,1
@@ -2913,10 +3326,8 @@ GET_SECOND_POINT:
     MOV AX,SELECTOR_GRID_Y1
     MOV SELECTOR_GRID_Y2,AX
     WAIT_ORIENTATION_SELECTION:
-        MOV AH,0
-        INT 16H
-        CMP AH,EXIT_SCANCODE
-        JE PRE_EXIT_SCREEN
+        WAIT_FOR_KEY
+        MOV AH , KEY_PRESSED
         CMP AH,UP_SCANCODE 
         JE UP_ORIENTATION_SELECTED
         CMP AH,DOWN_SCANCODE
@@ -2966,7 +3377,7 @@ MOV UP_ORIENTATION,0
 JMP DOWN_ORIENTATION_CHECK 
 UP_ORIENTATION_SHIP_CHECK:     ;CHECKS WHETHER THE UP-REGION HAS SHIPS PLACED IN ITS DIRECTION 
     DEC SELECTOR_GRID_Y2       ;TRAVERSE ON THE Y-AXIS UPWARDS
-    CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,SELECTED_PLAYER_SHIPS
+    CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2
     CMP IS_ONTARGET,0
     JNE UP_ORIENTATION_INVALID
     LOOP UP_ORIENTATION_SHIP_CHECK
@@ -2990,7 +3401,7 @@ DOWN_ORIENTATION_CHECK:
     JMP LEFT_ORIENTATION_CHECK 
     DOWN_ORIENTATION_SHIP_CHECK:     ;CHECKS WHETHER THE DOWN-REGION HAS SHIPS PLACED IN ITS DIRECTION 
         INC SELECTOR_GRID_Y2       ;TRAVERSE ON THE Y-AXIS DOWNWARDS
-        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,SELECTED_PLAYER_SHIPS
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2
         CMP IS_ONTARGET,0
         JNE DOWN_ORIENTATION_INVALID
         LOOP DOWN_ORIENTATION_SHIP_CHECK
@@ -3012,7 +3423,7 @@ LEFT_ORIENTATION_CHECK:
     JMP RIGHT_ORIENTATION_CHECK 
     LEFT_ORIENTATION_SHIP_CHECK:     ;CHECKS WHETHER THE LEFT-REGION HAS SHIPS PLACED IN ITS DIRECTION 
         DEC SELECTOR_GRID_X2       ;TRAVERSE ON THE X-AXIS IN THE LEFT DIRECTION
-        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,SELECTED_PLAYER_SHIPS
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2
         CMP IS_ONTARGET,0
         JNE LEFT_ORIENTATION_INVALID
         LOOP LEFT_ORIENTATION_SHIP_CHECK
@@ -3035,7 +3446,7 @@ RIGHT_ORIENTATION_CHECK:
     JMP POSSIBLE_ORIENTATIONS_CHECKER_FINISH 
     RIGHT_ORIENTATION_SHIP_CHECK:     ;CHECKS WHETHER THE RIGHT-REGION HAS SHIPS PLACED IN ITS DIRECTION 
         INC SELECTOR_GRID_X2       ;TRAVERSE ON THE X-AXIS IN THE RIGHT DIRECTION
-        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2,SELECTED_PLAYER_SHIPS
+        CELL_HAS_SHIP SELECTOR_GRID_X2,SELECTOR_GRID_Y2
         CMP IS_ONTARGET,0
         JNE RIGHT_ORIENTATION_INVALID
         LOOP RIGHT_ORIENTATION_SHIP_CHECK
@@ -3057,51 +3468,51 @@ STAT_SCREEN_   PROC    NEAR
     DRAW_RECTANGLE 400,70,400,470,WHITE
     ;PLAYER 1 SCORE
     MOV DL,0FH
-    PRINT_MESSAGE P1_USERNAME+1,0F0FH,0FH
+    PRINT_MESSAGE MY_USERNAME+1,0F0FH,0FH
     
     MOV DH,0FH ;Y
-    ADD DL,P1_USERNAME+1  ;X
+    ADD DL,MY_USERNAME+1  ;X
     PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH    
     ;PLAYER 2 SCORE
     MOV DL,10H    
-    PRINT_MESSAGE P2_USERNAME+1,0F40H,0FH
+    PRINT_MESSAGE OTHER_PLAYER_USERNAME+1,0F40H,0FH
     
     MOV DH,0FH ;Y
-    ADD DL,P2_USERNAME+1  ;X
+    ADD DL,OTHER_PLAYER_USERNAME+1  ;X
     ADD DL,30H
     PRINT_MESSAGE SCORE_CONSTANT_TEXT,DX,0FH 
     ;DECIMAL_TO_STRING:
     MOV AX,0
-    MOV AL,P1_SCORE
+    MOV AL,MY_SCORE
     MOV BL,10
     DIV BL
-    MOV P1_SCORE_STRING, AL
-    MOV P1_SCORE_STRING+1, AH
-    ADD P1_SCORE_STRING,48
-    ADD P1_SCORE_STRING+1,48
+    MOV MY_SCORE_STRING, AL
+    MOV MY_SCORE_STRING+1, AH
+    ADD MY_SCORE_STRING,48
+    ADD MY_SCORE_STRING+1,48
     MOV AX,1301H 
     MOV DH,0FH ;Y
-    MOV DL,P1_USERNAME+1 ;X
+    MOV DL,MY_USERNAME+1 ;X
     ADD DL,19H
-    MOV BP,OFFSET P1_SCORE_STRING
+    MOV BP,OFFSET MY_SCORE_STRING
     MOV CX,2         ;SIZE
     MOV BX,000FH
     INT 10H
     
     ;DECIMAL_TO_STRING:
     MOV AX,0
-    MOV AL,P2_SCORE
+    MOV AL,OTHER_PLAYER_SCORE
     MOV BL,10
     DIV BL
-    MOV P2_SCORE_STRING, AL
-    MOV P2_SCORE_STRING+1, AH
-    ADD P2_SCORE_STRING,48
-    ADD P2_SCORE_STRING+1,48
+    MOV OTHER_PLAYER_SCORE_STRING, AL
+    MOV OTHER_PLAYER_SCORE_STRING+1, AH
+    ADD OTHER_PLAYER_SCORE_STRING,48
+    ADD OTHER_PLAYER_SCORE_STRING+1,48
     MOV AX,1301H
     MOV DH,0FH ;Y
-    MOV DL,P2_USERNAME+1 ;X
+    MOV DL,OTHER_PLAYER_USERNAME+1 ;X
     ADD DL,4AH
-    MOV BP,OFFSET P2_SCORE_STRING
+    MOV BP,OFFSET OTHER_PLAYER_SCORE_STRING
     MOV CX,2         ;SIZE
     MOV BX,000FH
     INT 10H
@@ -3135,7 +3546,7 @@ CONCATENATE_  PROC    NEAR
     CMP AL,1
     JNE PLAYER_2_CONCATENATION
     MOV SI,0
-    MOV SI,OFFSET P1_USERNAME
+    MOV SI,OFFSET MY_USERNAME
     INC SI
     MOV AX,0
     MOV AL,BYTE PTR[SI]
@@ -3151,7 +3562,7 @@ CONCATENATE_  PROC    NEAR
     JMP STRING_CONCATENATION
     PLAYER_2_CONCATENATION: 
     MOV SI,0
-    MOV SI,OFFSET P2_USERNAME
+    MOV SI,OFFSET OTHER_PLAYER_USERNAME
     INC SI
     MOV AX,0
     MOV AL,BYTE PTR[SI]
@@ -3193,38 +3604,21 @@ EXIT_GAME_    ENDP
 ;-----------------------------------------;
 PRESS_ENTER_TO_CONTINUE_    PROC    NEAR
     KEEP_WAITING:
-        MOV AH, 0
-        INT 16H
-        CMP AH, EXIT_SCANCODE
-        JE PRE_EXIT_SCREEN
+        WAIT_FOR_KEY
+        MOV AH , KEY_PRESSED
         CMP AH, ENTER_SCANCODE
     JNE KEEP_WAITING
     RET
 PRESS_ENTER_TO_CONTINUE_    ENDP
 ;-----------------------------------------;
 PLAYERS_PLACE_SHIPS_    PROC    NEAR
+    
     CLEAR_GAME_SCREEN WHITE
     DRAW_GRID
-    CONCATENATE PLAYER_TURN, 1
-    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
-    PRESS_ENTER_TO_CONTINUE
-    PLACE_SHIPS_ON_GRID 1
-    
-    CLEAR_GAME_SCREEN   WHITE
-    DRAW_GRID
-    CONCATENATE PLAYER_TURN, 2
-    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
-    PRESS_ENTER_TO_CONTINUE
-    PLACE_SHIPS_ON_GRID 2
-    
-    CLEAR_GAME_SCREEN   WHITE
-    DRAW_GRID
-    CONCATENATE PLAYER_TURN, 1
-    PRINT_NOTIFICATION_MESSAGE  CONCATENATED_STRING, 1
-    PRESS_ENTER_TO_CONTINUE
-    
-    PRINT_NOTIFICATION_MESSAGE  ATTACK_TIME_MSG, 1
-    PRESS_ENTER_TO_CONTINUE
+    PLACE_SHIPS_ON_GRID  
+    MOVE_TO_NEXT_SCENE
+    PRINT_NOTIFICATION_MESSAGE SELECT_ATTACK_COLUMN_MSG, 1
+
     RET
 PLAYERS_PLACE_SHIPS_    ENDP
 ;-----------------------------------------; 
@@ -3278,12 +3672,22 @@ RECEIVE_BYTE_   PROC    NEAR
     IN AL, DX
     MOV SERIAL_BYTE, AL
     MOV DATA_RECEIVED_FLAG, 1
+    ; CHECK FOR OVERRUN
+    MOV DX, 3FDH
+    IN AL, DX
+    AND AL, 10001110B
+    JNZ OVERRUN_DETECTED
     RET
     NO_DATA_TO_RECEIVE:
     MOV DATA_RECEIVED_FLAG, 0
     RET
+    OVERRUN_DETECTED:
+    MOV AH, 2
+    MOV DL, 'E'
+    INT 21H
+    RET
 RECEIVE_BYTE_    ENDP 
-;-----------------------------------------; 
+;-----------------------------------------;  
 
 INITIALIZE_SERIAL_PORT_ PROC    NEAR
     ; SET DIVISOR LATCH ACCESS
@@ -3314,18 +3718,49 @@ INITIALIZE_SERIAL_PORT_ PROC    NEAR
     MOV BYTE PTR [DI], 0
     MOV SI, OFFSET SEND_CHAT_BUFFER
     MOV DI, OFFSET RECEIVE_CHAT_BUFFER
-    MOV BYTE PTR [SI], 0
+    MOV BYTE PTR [SI], 1  ; CHAT BUFFER SIZE SHOULD BE 1 WHEN IT IS EMPTY AS IT ALWAYS CONTAINS THE START CHAT CODE
     MOV BYTE PTR [DI], 0
     RET
 INITIALIZE_SERIAL_PORT_ ENDP 
 ;-----------------------------------------; 
 
 SEND_DATA_  PROC    NEAR
+    ; PARAMETERS
+    ; AL : BUFFER INDEX
+    MOV BUFFER_INDEX, AL
+    ; SEND A REQUEST TO SEND
+    MOV SERIAL_BYTE, REQUEST_TO_SEND_CODE
+    SEND_BYTE
+    ; WAIT FOR THE RECEIVER TO BE READ
+    WAIT_FOR_READY_TO_RECEIVE:
+        RECEIVE_BYTE
+        CMP DATA_RECEIVED_FLAG, 1
+        JNE WAIT_FOR_READY_TO_RECEIVE
+        CMP SERIAL_BYTE, READY_TO_RECEIVE_CODE
+        JNE WAIT_FOR_READY_TO_RECEIVE
+        
+    ; READY TO SEND
+  
     ; GET THE SIZE OF THE DATA IN THE BUFFER
-    MOV BX, OFFSET SEND_DATA_BUFFER
-    MOV CL, BYTE PTR [BX]
-    MOV CH, 0
-    INC BX
+    CMP BUFFER_INDEX, DATA_BUFFER_INDEX
+    JNE GET_CHAT_BUFFER_OFFSET
+    MOV BP, OFFSET SEND_DATA_BUFFER     ; BP -> BUFFER SIZE
+    MOV SI, OFFSET SEND_DATA_BUFFER_PTR ; SI -> BUFFER POINTER
+    MOV BX, OFFSET SEND_DATA_BUFFER+1
+    MOV DI, BX          ; BX & DI -> THE FIRST BYTE OF DATA (AFTER THE SIZE)
+    JMP START_SENDING
+    
+    GET_CHAT_BUFFER_OFFSET:
+    MOV BP, OFFSET SEND_CHAT_BUFFER     ; BP -> BUFFER SIZE
+    MOV SI, OFFSET SEND_CHAT_BUFFER_PTR ; SI -> BUFFER POINTER
+    MOV BX, OFFSET SEND_CHAT_BUFFER+1
+    MOV DI, BX          ; BX & DI -> THE FIRST BYTE OF DATA (AFTER THE SIZE, INCLUDING THE START CHAT CODE)
+    
+    START_SENDING:
+    MOV CL, BYTE PTR DS:[BP]
+    MOV CH, 0               ; CX = DATA SIZE
+    CMP BYTE PTR DS:[BP], 0
+    JE EMPTY_SEND_BUFFER
     ; SEND ALL THE DATA IN THE BUFFER
     SEND_ALL_BYTES:
         MOV DL, [BX]
@@ -3333,48 +3768,474 @@ SEND_DATA_  PROC    NEAR
         SEND_BYTE
         INC BX
     LOOP SEND_ALL_BYTES
-    ; RESET THE POINTER TO THE FIRST DATA BYTE
-    MOV BX, OFFSET SEND_DATA_BUFFER+1
-    MOV SEND_DATA_BUFFER_PTR, BX
+    
     ; RESET THE SIZE TO 0
-    DEC BX
-    MOV BYTE PTR [BX], 0
+    MOV BYTE PTR DS:[BP], 0
+    CMP BUFFER_INDEX, DATA_BUFFER_INDEX
+    JNE RESET_CHAT_BUFFER_SIZE
+    MOV SEND_DATA_BUFFER_FULL, 0
+    ; RESET THE POINTER TO THE FIRST DATA BYTE
+    MOV WORD PTR [SI], DI
+    JMP DONE_SENDING_BUFFER
+    
+    RESET_CHAT_BUFFER_SIZE:
+    MOV SEND_CHAT_BUFFER_FULL, 0
+    INC BYTE PTR DS:[BP]    ; CHAT BUFFER SIZE SHOULD BE 1 WHEN IT IS EMPTY AS IT ALWAYS CONTAINS THE START CHAT CODE
+    ; RESET THE POINTER TO THE FIRST DATA BYTE
+    MOV WORD PTR [SI], DI
+    
+    EMPTY_SEND_BUFFER:
+
+    DONE_SENDING_BUFFER:
+    ; SEND THE END OF SESSION CODE
+    MOV SERIAL_BYTE, ALL_DATA_SENT_CODE
+    SEND_BYTE
+    
     RET
 SEND_DATA_  ENDP
-;-----------------------------------------; 
+;-----------------------------------------;  
 
 RECEIVE_DATA_   PROC    NEAR
-    MOV BX, OFFSET RECEIVE_DATA_BUFFER+1
-    MOV CL, 0
-    RECEIVE_ALL_DATA:
+    ; IF THE PROCEDURE FAILS, RESETTING THE BUFFER SIZE SHOULD BE MOVED TO BE DONE MANUALLY WHENEVER SOMEONE
+    ; USES DATA FROM THE BUFFER, EXCEPT FOR THE CASE WHERE NO DATA IS FOUND AT ALL
+    RECEIVE_BYTE
+    CMP DATA_RECEIVED_FLAG, 1
+    JNE NO_DATA_TO_PUT_IN_THE_BUFFER
+    ; CHECK FOR THE REQUEST TO SEND
+    CMP SERIAL_BYTE, REQUEST_TO_SEND_CODE
+    JNE NO_DATA_TO_PUT_IN_THE_BUFFER
+    ; SEND READY TO RECEIVE STATUS
+    MOV SERIAL_BYTE, READY_TO_RECEIVE_CODE
+    SEND_BYTE
+    ; START RECEIVING DATA
+    WAIT_FOR_FIRST_BYTE:
         RECEIVE_BYTE
         CMP DATA_RECEIVED_FLAG, 1
-        JNE ALL_DATA_RECEIVED
+        JNE WAIT_FOR_FIRST_BYTE
+        CMP SERIAL_BYTE, ALL_DATA_SENT_CODE
+        JE NO_DATA_WAS_RECEIVED
+    ; FIRST BYTE RECEIVED, CHECK IF IT IS DATA OR CHAT
+    MOV CL, 0
+    CMP SERIAL_BYTE, START_CHAT_CODE
+    JE RECEIVE_CHAT
+    ; RECEIVE DATA
+    MOV BX, OFFSET RECEIVE_DATA_BUFFER+1    ; BX -> DATA
+    MOV SI, OFFSET RECEIVE_DATA_BUFFER      ; SI -> SIZE
+    ; RESET CHAT BUFFER SIZE
+    MOV RECEIVE_CHAT_BUFFER, 0 
+    ; ADD THE RECEIVED BYTE TO THE BUFFER 
+    MOV DL, SERIAL_BYTE
+    MOV BYTE PTR [BX], DL
+    INC BX 
+    INC CL
+    JMP START_RECEIVING
+    
+    RECEIVE_CHAT:
+    MOV BX, OFFSET RECEIVE_CHAT_BUFFER+1    ; BX -> CHAT DATA
+    MOV SI, OFFSET RECEIVE_CHAT_BUFFER      ; SI -> SIZE
+    ; RESET DATA BUFFER SIZE
+    MOV RECEIVE_DATA_BUFFER, 0
+    
+    START_RECEIVING:
+    MOV AX, BX
+    DEC AX ; NOW AX = BUFFER OFFSET
+    ADD AX, BUFFER_SIZE ; NOW AX = OFFSET JUST BEYOND THE BUFFER
+    RECEIVE_ALL:
+        RECEIVE_BYTE
+        CMP DATA_RECEIVED_FLAG, 1
+        JNE RECEIVE_ALL
+        ; CHECK IF THATS THE END OF THE SESSION
+        CMP SERIAL_BYTE, ALL_DATA_SENT_CODE
+        JE ALL_DATA_RECEIVED
         MOV DL, SERIAL_BYTE
         MOV BYTE PTR [BX], DL
         INC BX
         INC CL
-    JMP RECEIVE_ALL_DATA
+        CMP BX, AX
+        JE ALL_DATA_RECEIVED
+    JMP RECEIVE_ALL
     ALL_DATA_RECEIVED:
     ; SET THE SIZE OF THE BUFFER
-    MOV BX, OFFSET RECEIVE_DATA_BUFFER
-    MOV BYTE PTR[BX], CL
+    MOV BYTE PTR[SI], CL
+    RET
+    
+    NO_DATA_WAS_RECEIVED:
+    
+    NO_DATA_TO_PUT_IN_THE_BUFFER:
+    ; RESET BOTH BUFFERS SIZES
+    MOV RECEIVE_DATA_BUFFER, 0
+    MOV RECEIVE_CHAT_BUFFER, 0
     RET
 RECEIVE_DATA_   ENDP
 ;-----------------------------------------; 
-
-ADD_BYTE_TO_SEND_DATA_BUFFER_ PROC    NEAR
+ADD_BYTE_TO_SEND_BUFFER_ PROC    NEAR
     ; PARAMETERS
     ; SERIAL_BYTE -> BYTE TO BE ADDED TO THE BUFFER
+    ; BL -> BUFFER INDEX
+    MOV BUFFER_INDEX, BL
+    ; CHECK WHICH BUFFER TO ADD TO
+    CMP BUFFER_INDEX, DATA_BUFFER_INDEX
+    JNE ADD_TO_CHAT_BUFFER
+    ; ADD TO DATA BUFFER
+    CMP SEND_DATA_BUFFER_FULL, 1
+    JE DONE_ADDING_TO_SEND_BUFFER
     MOV SI, OFFSET SEND_DATA_BUFFER     ; SI -> SIZE OF THE BUFFER
     MOV BX, SEND_DATA_BUFFER_PTR        ; BX -> DATA IN THE BUFFER
+    MOV DI, OFFSET SEND_DATA_BUFFER_PTR
+    MOV BP, OFFSET SEND_DATA_BUFFER_FULL
+    JMP ADD_TO_BUFFER
+    
+    ADD_TO_CHAT_BUFFER:
+    CMP SEND_CHAT_BUFFER_FULL, 1
+    JE DONE_ADDING_TO_SEND_BUFFER
+    MOV SI, OFFSET SEND_CHAT_BUFFER     ; SI -> SIZE OF THE BUFFER
+    MOV BX, SEND_CHAT_BUFFER_PTR        ; BX -> DATA IN THE BUFFER
+    MOV DI, OFFSET SEND_CHAT_BUFFER_PTR
+    MOV BP, OFFSET SEND_CHAT_BUFFER_FULL
+    
+    ADD_TO_BUFFER:
     MOV AL, SERIAL_BYTE
     MOV BYTE PTR [BX], AL
-    INC SEND_DATA_BUFFER_PTR
-    INC BYTE PTR [SI]
-ADD_BYTE_TO_SEND_DATA_BUFFER_ ENDP
+    INC WORD PTR [DI]   ; INCREMENT BUFFER POINTER
+    INC BYTE PTR [SI]   ; INCREMENT SIZE
+    ; CHECK IF THE MAXIMUM CAPACITY IS REACHED
+    MOV AX, SI
+    ADD AX, BUFFER_SIZE ; NOW AX = OFFSET JUST BEYOND THE BUFFER
+    CMP WORD PTR [DI], AX
+    JNE DONE_ADDING_TO_SEND_BUFFER
+    
+    ; MAXIMUM CAPACITY REACHED
+    MOV BYTE PTR DS:[BP], 1
+    
+    DONE_ADDING_TO_SEND_BUFFER:
+    RET
+ADD_BYTE_TO_SEND_BUFFER_ ENDP
+;-----------------------------------------; 
+REMOVE_BYTE_FROM_SEND_BUFFER_   PROC    NEAR
+    ; PARAMETERS
+    ; BL -> BUFFER INDEX
+    MOV BUFFER_INDEX, BL
+    CMP BUFFER_INDEX, DATA_BUFFER_INDEX
+    JNE REMOVE_BYTE_FROM_CHAT_BUFFER
+    
+    REMOVE_BYTE_FROM_DATA_BUFFER:
+    MOV BX, OFFSET SEND_DATA_BUFFER
+    CMP BYTE PTR [BX], 0
+    JE NO_BYTE_TO_REMOVE
+    DEC BYTE PTR [BX]
+    DEC SEND_DATA_BUFFER_PTR
+    RET
+    
+    REMOVE_BYTE_FROM_CHAT_BUFFER:
+    MOV BX, OFFSET SEND_CHAT_BUFFER
+    CMP BYTE PTR [BX], 1
+    JE NO_BYTE_TO_REMOVE
+    DEC BYTE PTR [BX]
+    DEC SEND_CHAT_BUFFER_PTR
+    RET
+    
+    NO_BYTE_TO_REMOVE:
+    RET
+REMOVE_BYTE_FROM_SEND_BUFFER_   ENDP 
+;-----------------------------------------;  
+WAIT_FOR_KEY_  PROC   NEAR
+    
+     WAIT_FOR_KEY_OR_DATA: 
+     MOV AH,1
+     INT 16H
+     ;;;;HERE WE WILL CHECK IF THE OTHER PLAYER SEND ANY DATA RELATED TO MSGS
+     JZ WAIT_FOR_KEY_OR_DATA
+     MOV AH,0
+     INT 16H
+     
+     CMP AH,EXIT_SCANCODE
+     JE PRE_EXIT_SCREEN
+     
+     DIFFERENT_KEY_IS_PRESSED:
+     MOV KEY_PRESSED, AH
+     RET
+     
+WAIT_FOR_KEY_ ENDP
+;-----------------------------------------; 
+SEND_ATTACK_COORD_  PROC   NEAR
+
+                     
+      ADD_BYTE_TO_SEND_BUFFER ATTACK_COORD_CODE, DATA_BUFFER_INDEX
+      ADD_WORD_TO_SEND_BUFFER ATTACKX, DATA_BUFFER_INDEX
+      ADD_WORD_TO_SEND_BUFFER ATTACKY, DATA_BUFFER_INDEX    
+      SEND_DATA DATA_BUFFER_INDEX
+        
+      RET
+ 
+SEND_ATTACK_COORD_ ENDP
+;-----------------------------------------; 
+RECEIEVE_ATTACK_COORD_  PROC   NEAR
+    
+  IS_IT_ATTACK_COORD:   
+     RECEIVE_DATA 
+     MOV BX, OFFSET RECEIVE_DATA_BUFFER 
+     MOV AL,[Bx]
+     CMP AL,0
+     JZ IS_IT_ATTACK_COORD
+     INC BX
+     MOV AL,[Bx]
+     CMP AL, POWER_UP_ACTIVATION_CODE
+     JE THE_OTHER_PLAYER_ACTIVATE_POWER_UP
+     CMP AL, ATTACK_COORD_CODE
+     JNE IS_IT_ATTACK_COORD
+     JE ATTACK_COORD_RECEIEVED_SUCCESSFULLY
+     
+     THE_OTHER_PLAYER_ACTIVATE_POWER_UP:
+     ACTIVATE_OTHER_PLAYER_POWER_UP
+     JMP IS_IT_ATTACK_COORD    
+     
+     ATTACK_COORD_RECEIEVED_SUCCESSFULLY:
+     INC BX
+     MOV AX,[BX]
+     MOV ATTACKX,AX
+    
+     ADD BX, 2
+     MOV AX,[BX]
+     MOV ATTACKY,AX
+
+     RET
+    
+ RECEIEVE_ATTACK_COORD_ ENDP
+;-----------------------------------------; 
+RECEIEVE_ATTACK_RESULT_  PROC   NEAR
+ 
+   IS_IT_ATTACK_RESULTS:   
+     RECEIVE_DATA 
+     MOV BX, OFFSET RECEIVE_DATA_BUFFER
+     MOV AL,[Bx]
+     CMP AL, 0
+     JE IS_IT_ATTACK_RESULTS
+     INC BX
+     MOV AL,[Bx]
+     CMP AL, ATTACK_RESULT_CODE
+     JNE IS_IT_ATTACK_RESULTS
+     ;JNE HERE WE HAVE TO CHECK IF IT WAS A MSG OR NOT TO CHECK , LET'S TRY IT AT FIRST
+     
+     ;RECEIEVE THE DATA By THE SAME ORDER I SENT IT
+     INC BX                
+     MOV AL,[BX]
+     MOV IS_ON_GRID,AL
+    
+     INC BX
+     MOV AL,[BX]
+     MOV IS_ATTACKED_BEFORE,AL
+     
+     INC BX
+     MOV AL,[BX]
+     MOV IS_ONTARGET,AL
+     
+     INC BX
+     MOV AL,[BX]
+     MOV IS_DESTROYED, AL
+     
+     CMP AL, 0
+     JE THIS_DATA_IS_ENOUGH
+     
+     INC BX
+     MOV AX,[BX]
+     MOV DESTROYED_X1, AX
+     
+     INC BX
+     MOV AX,[BX]
+     MOV DESTROYED_Y1, AX
+     
+     INC BX
+     MOV AX,[BX]
+     MOV DESTROYED_X2, AX
+     
+     INC BX
+     MOV AX,[BX]
+     MOV DESTROYED_Y2, AX
+     
+     THIS_DATA_IS_ENOUGH:   
+     RET   
+     
+RECEIEVE_ATTACK_RESULT_ ENDP
+;-----------------------------------------; 
+RECEIEVE_DESTROYED_SHIP_POWER_UP_RESULT_  PROC   NEAR
+ 
+   IS_IT_RANDOM_SHIP_RESULTS:   
+     RECEIVE_DATA 
+     MOV BX, OFFSET RECEIVE_DATA_BUFFER
+     MOV AL,[Bx]
+     CMP AL, 0
+     JE IS_IT_RANDOM_SHIP_RESULTS
+     INC BX
+     MOV AL,[Bx]
+     CMP AL, DESTROY_RANDOM_SHIP_RESULT_CODE
+     JNE IS_IT_RANDOM_SHIP_RESULTS
+     ;JNE HERE WE HAVE TO CHECK IF IT WAS A MSG OR NOT TO CHECK , LET'S TRY IT AT FIRST
+     
+     INC BX
+     MOV DX, [BX]
+     MOV DESTROYED_X1, DX
+     
+     ADD BX, 2
+     MOV DX, [BX]
+     MOV DESTROYED_Y1, DX
+     
+     ADD BX, 2
+     MOV DL, [BX]
+     MOV DESTROYED_SHIP_REMAINING_CELLS, DL
+     
+     INC BX
+     MOV DX, [BX]
+     MOV DESTROYED_SHIP_ORIENTATION, DX
+     
+     ADD BX, 2
+     MOV DX, [BX]
+     MOV DESTROYED_SHIP_SIZE, DX
+     UPDATE_OTHER_PLAYER_RANDOM_DESTROYED_SHIP   
+     RET   
+     
+RECEIEVE_DESTROYED_SHIP_POWER_UP_RESULT_ ENDP
+;-----------------------------------------;  
+SEND_DESTROYED_SHIP_POWER_UP_RESULT_  PROC   NEAR
+      
+      ADD_BYTE_TO_SEND_BUFFER DESTROY_RANDOM_SHIP_RESULT_CODE, DATA_BUFFER_INDEX
+      ADD_WORD_TO_SEND_BUFFER DESTROYED_X1, DATA_BUFFER_INDEX        ;THOSE PARAMETERS WILL ONLY BE USED IF THE RANDOM_PLAYER WAS THE SENDER 
+      ADD_WORD_TO_SEND_BUFFER DESTROYED_Y1, DATA_BUFFER_INDEX        ;SO THE RECEIEVER WANT TO KNOW THEIR POINTS 
+      ADD_BYTE_TO_SEND_BUFFER DESTROYED_SHIP_REMAINING_CELLS, DATA_BUFFER_INDEX
+      ADD_WORD_TO_SEND_BUFFER DESTROYED_SHIP_ORIENTATION, DATA_BUFFER_INDEX
+      ADD_WORD_TO_SEND_BUFFER DESTROYED_SHIP_SIZE, DATA_BUFFER_INDEX
+      SEND_DATA DATA_BUFFER_INDEX
+      RET
+ 
+SEND_DESTROYED_SHIP_POWER_UP_RESULT_ ENDP
+;-----------------------------------------; 
+SEND_ATTACK_RESULT_  PROC   NEAR
+     
+     ADD_BYTE_TO_SEND_BUFFER ATTACK_RESULT_CODE, DATA_BUFFER_INDEX
+     ADD_BYTE_TO_SEND_BUFFER IS_ON_GRID, DATA_BUFFER_INDEX
+     ADD_BYTE_TO_SEND_BUFFER IS_ATTACKED_BEFORE, DATA_BUFFER_INDEX
+     ADD_BYTE_TO_SEND_BUFFER IS_ONTARGET, DATA_BUFFER_INDEX
+     ADD_BYTE_TO_SEND_BUFFER IS_DESTROYED, DATA_BUFFER_INDEX
+     ADD_WORD_TO_SEND_BUFFER DESTROYED_X1, DATA_BUFFER_INDEX
+     ADD_WORD_TO_SEND_BUFFER DESTROYED_Y1, DATA_BUFFER_INDEX
+     ADD_WORD_TO_SEND_BUFFER DESTROYED_X2, DATA_BUFFER_INDEX
+     ADD_WORD_TO_SEND_BUFFER DESTROYED_Y2, DATA_BUFFER_INDEX
+     SEND_DATA DATA_BUFFER_INDEX
+     
+     MOV IS_DESTROYED, 0
+     RET
+ 
+SEND_ATTACK_RESULT_ ENDP
+;-----------------------------------------; 
+MOVE_TO_NEXT_SCENE_  PROC   NEAR
+      
+    MOV DUMMY_COUNTER, 0
+    WAIT_FOR_ME_TO_MOVE_TO_NEXT_SCENE:
+    WAIT_FOR_KEY
+    MOV AH, KEY_PRESSED
+    CMP AH, ENTER_SCANCODE
+    JNZ WAIT_FOR_ME_TO_MOVE_TO_NEXT_SCENE
+
+    MOV BX, OFFSET RECEIVE_DATA_BUFFER
+    RECEIVE_DATA
+    CMP BYTE PTR [BX], 0
+    JNE RECEIVE_MOVE_TO_NEXT_SCENE
+
+    SEND_MOVE_TO_NEXT_SCENE:
+    PRINT_NOTIFICATION_MESSAGE  WAIT_FOR_THE_OTHER_PLAYER_MSG, 1
+    ADD_BYTE_TO_SEND_BUFFER MOVE_TO_NEXT_SCENE_CODE, DATA_BUFFER_INDEX
+    SEND_DATA   DATA_BUFFER_INDEX
+    INC DUMMY_COUNTER
+    CMP DUMMY_COUNTER, 2
+    JNE RECEIVE_MOVE_TO_NEXT_SCENE_AFTER_SENDING
+    RET
+
+    RECEIVE_MOVE_TO_NEXT_SCENE:
+    INC BX
+    CMP BYTE PTR [BX], MOVE_TO_NEXT_SCENE_CODE
+    JNE MOVE_TO_NEXT_SCENE_ERROR
+    INC DUMMY_COUNTER
+    CMP DUMMY_COUNTER, 2
+    JNE SEND_MOVE_TO_NEXT_SCENE
+    RET
+
+    RECEIVE_MOVE_TO_NEXT_SCENE_AFTER_SENDING:
+    MOV BX, OFFSET RECEIVE_DATA_BUFFER
+    WAIT_FOR_THE_OTHER_PLAYER_TO_MOVE_TO_THE_NEXT_SCENE:
+         RECEIVE_DATA
+         CMP BYTE PTR [BX], 0   
+    JE WAIT_FOR_THE_OTHER_PLAYER_TO_MOVE_TO_THE_NEXT_SCENE
+    JMP RECEIVE_MOVE_TO_NEXT_SCENE
+
+    MOVE_TO_NEXT_SCENE_ERROR:
+    ; IF WE REACHED THIS POINT THEN ONE PLAYER HAS SENT MOVE_TO_NEXT_SCENE_CODE AND THE OTHER PLAYER SEND SOMETHING ELSE
+    RET
+    
+MOVE_TO_NEXT_SCENE_ ENDP
+;-----------------------------------------; 
+SEND_POWER_UP_ACTIVATION_  PROC   NEAR
+      
+      ;PARAMETERS, AL --> CERTAIN POWER UP CODE 
+      ADD_BYTE_TO_SEND_BUFFER POWER_UP_ACTIVATION_CODE, DATA_BUFFER_INDEX
+      ADD_BYTE_TO_SEND_BUFFER AL, DATA_BUFFER_INDEX
+      ADD_BYTE_TO_SEND_BUFFER RANDOM_PLAYER, DATA_BUFFER_INDEX       ;IT WILL BE USED ONLY IF AL HAS THE RANDOM SHIP CODE
+      ADD_WORD_TO_SEND_BUFFER DESTROYED_X1, DATA_BUFFER_INDEX        ;THOSE PARAMETERS WILL ONLY BE USED IF THE RANDOM_PLAYER WAS THE SENDER 
+      ADD_WORD_TO_SEND_BUFFER DESTROYED_Y1, DATA_BUFFER_INDEX        ;SO THE RECEIEVER WANT TO KNOW THEIR POINTS 
+      ADD_BYTE_TO_SEND_BUFFER DESTROYED_SHIP_REMAINING_CELLS, DATA_BUFFER_INDEX
+      ADD_WORD_TO_SEND_BUFFER DESTROYED_SHIP_ORIENTATION, DATA_BUFFER_INDEX
+      ADD_WORD_TO_SEND_BUFFER DESTROYED_SHIP_SIZE, DATA_BUFFER_INDEX
+      SEND_DATA DATA_BUFFER_INDEX
+      RET
+ 
+SEND_POWER_UP_ACTIVATION_ ENDP
+;-----------------------------------------; 
+ACTIVATE_OTHER_PLAYER_POWER_UP_  PROC   NEAR
+
+     MOV BX, OFFSET RECEIVE_DATA_BUFFER + 2
+     MOV AL,[Bx]
+     CMP AL, ATTACK_TWICE_CODE
+     JNE NOT_ATTACK_TWICE
+     OTHER_PLAYER_ATTACK_TWICE_POWER_UP_ACTIVATED
+     RET
+    
+     NOT_ATTACK_TWICE:
+     CMP AL, DESTROY_RANDOM_SHIP_CODE
+     JNE NOT_DESTROY_RANDOM_SHIP
+     INC BX
+     MOV DL, [BX]
+     CMP DL, 1
+     JNE THE_RANDOM_SHIP_ISNOT_MINE
+     CHOOSE_SHIP_AND_DESTROY_IT
+     SEND_DESTROYED_SHIP_POWER_UP_RESULT
+     RET
+     
+     THE_RANDOM_SHIP_ISNOT_MINE:
+     INC BX
+     MOV DX, [BX]
+     MOV DESTROYED_X1, DX
+     
+     ADD BX, 2
+     MOV DX, [BX]
+     MOV DESTROYED_Y1, DX
+     
+     ADD BX, 2
+     MOV DL, [BX]
+     MOV DESTROYED_SHIP_REMAINING_CELLS, DL
+     
+     INC BX
+     MOV DX, [BX]
+     MOV DESTROYED_SHIP_ORIENTATION, DX
+     
+     ADD BX, 2
+     MOV DX, [BX]
+     MOV DESTROYED_SHIP_SIZE, DX
+     UPDATE_OTHER_PLAYER_RANDOM_DESTROYED_SHIP
+     RET
+     
+     NOT_DESTROY_RANDOM_SHIP:
+     RET
+     
+
+ACTIVATE_OTHER_PLAYER_POWER_UP_ ENDP
 ;-----------------------------------------; 
 
-
-;-----------------------------------------; 
 END     MAIN
