@@ -88,8 +88,8 @@ WELCOME_MSG                 DB   24,'Welcome To Battleships !'
 CONTROLLERS_MSG             DB   10,'Controls: '
 ARROWS_MSG                  DB   60,'ARROWS: For navigation (in the grid and power ups selection)'
 TAB_MSG                     DB   46,'TAB: To enter and exit the power ups selection'
-SPACE_MSG                   DB   47,'SPACE: To select a column or control the slider'
-ENTER_MSG                   DB   37,'ENTER: To move throughout game stages'
+SPACE_MSG                   DB   40,'PLUS(+): To send an in-game chat message'
+ENTER_MSG                   DB   64,'ENTER: To move throughout game stages and select different items'
 
 ;---------------- GENERAL MESSAGES -------------------------
 PLAYER_TURN                     DB      34,"'s turn ! Wait for him to attack !"
