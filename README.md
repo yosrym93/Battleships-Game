@@ -10,4 +10,4 @@ The game starts with both players placing there ships (10 ships of different siz
 2- Destroy a random ship (completely random, it can be yours).
 3- Reverse the other player's next attack (experimental).
 
-Happy sea war !
+Let the battle begin !
