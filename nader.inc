@@ -110,6 +110,16 @@ PRINT_INLINE_CHAT_MESSAGE	MACRO       STATUS_TEXT, INDEX
 
 ENDM                    PRINT_INLINE_CHAT_MESSAGE
 ;------------------------------------------------------------------------; 
+;-------------------------------------------;
+;--------------- CHAT MACROS ---------------;
+;-------------------------------------------;
+
+STANDALONE_CHAT_MODE  MACRO   
+PUSHA
+CALL STANDALONE_CHAT_MODE_
+POPA
+ENDM                    STANDALONE_CHAT_MODE
+;------------------------------------------------------------------------;
 CHECK_IF_CHAT_KEY  MACRO   ASCII_KEY
 
 PUSHA
@@ -121,4 +131,18 @@ CALL CHECK_IF_CHAT_KEY_
 POPA
 
 ENDM                    CHECK_IF_CHAT_KEY
-;------------------------------------------------------------------------; 
+;------------------------------------------------------------------------;
+ADD_TO_MSGS_QUEUE  MACRO   PLAYER_INDEX,MESSAGE
+PUSHA
+MOV AH,PLAYER_INDEX
+MOV BP, OFFSET MESSAGE
+CALL ADD_TO_MSGS_QUEUE_
+POPA
+ENDM                    ADD_TO_MSGS_QUEUE
+;------------------------------------------------------------------------;
+PRINT_MSGS_QUEUE  MACRO
+PUSHA
+CALL PRINT_MSGS_QUEUE_
+POPA
+ENDM                    PRINT_MSGS_QUEUE
+;------------------------------------------------------------------------;
